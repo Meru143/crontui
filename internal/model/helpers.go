@@ -18,22 +18,6 @@ func truncate(s string, max int) string {
 	return s[:max-3] + "..."
 }
 
-// min returns the smaller of two ints.
-func min(a, b int) int {
-	if a < b {
-		return a
-	}
-	return b
-}
-
-// max returns the larger of two ints.
-func max(a, b int) int {
-	if a > b {
-		return a
-	}
-	return b
-}
-
 // clamp constrains val to [lo, hi].
 func clamp(val, lo, hi int) int {
 	if val < lo {

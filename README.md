@@ -75,8 +75,10 @@ crontui help                          # Show help
 | `d` | Delete selected job |
 | `t` | Toggle enabled/disabled |
 | `/` | Search jobs |
+| `x` | Run selected job now |
 | `f` | Cycle filter (all → enabled → disabled) |
 | `b` | Open backup list |
+| `R` | Remove all crontab entries |
 | `r` | Refresh job list |
 | `q` | Quit |
 
@@ -118,6 +120,7 @@ crontui/
 │   │   ├── list.go          # List view rendering & key handling
 │   │   ├── form.go          # Add/edit form view
 │   │   ├── backup.go        # Backup list view
+│   │   ├── run_remove.go    # Run output & remove-all confirmation
 │   │   └── helpers.go       # Utility functions
 │   └── styles/styles.go     # Lip Gloss styles & color palette
 └── pkg/types/cronjob.go     # CronJob struct

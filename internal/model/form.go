@@ -24,6 +24,35 @@ const (
 // updateForm handles key events in the add/edit form view.
 func (m Model) updateForm(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	switch msg.String() {
+	case "1", "2", "3", "4", "5", "6":
+		if m.formFocusIndex == formFieldSchedule {
+			presets := map[string]string{
+				"1": "0 * * * *",
+				"2": "0 0 * * *",
+				"3": "0 0 * * 0",
+				"4": "0 0 1 * *",
+				"5": "0 0 1 1 *",
+				"6": "@reboot",
+			}
+			m.scheduleInput.SetValue(presets[msg.String()])
+			m.scheduleInput.CursorEnd()
+			m.updateFormPreview()
+			return m, nil
+		}
+		// Not on schedule field — forward to active input
+		var cmd tea.Cmd
+		switch m.formFocusIndex {
+		case formFieldCommand:
+			m.commandInput, cmd = m.commandInput.Update(msg)
+		case formFieldDescription:
+			m.descriptionInput, cmd = m.descriptionInput.Update(msg)
+		case formFieldWorkingDir:
+			m.workingDirInput, cmd = m.workingDirInput.Update(msg)
+		case formFieldMailto:
+			m.mailtoInput, cmd = m.mailtoInput.Update(msg)
+		}
+		return m, cmd
+
 	case "esc":
 		m.currentView = ViewList
 		m.formError = ""
@@ -104,7 +133,7 @@ func (m *Model) updateFormPreview() {
 	for i, t := range runs {
 		lines = append(lines, fmt.Sprintf("  %d. %s  (%s)", i+1, t.Format("Mon Jan 2 15:04:05"), hr[i]))
 	}
-	_ = runs
+
 	m.formPreview = strings.Join(lines, "\n")
 }
 

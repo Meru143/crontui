@@ -24,16 +24,6 @@ const (
 	ViewConfirmRemoveAll
 )
 
-// SortField represents column to sort by.
-type SortField int
-
-const (
-	SortByID SortField = iota
-	SortByCommand
-	SortBySchedule
-	SortByStatus
-)
-
 // Model is the top-level Bubble Tea model.
 type Model struct {
 	// Data
@@ -49,8 +39,7 @@ type Model struct {
 	// List state
 	searchQuery string
 	searchMode  bool
-	sortBy      SortField
-	sortAsc     bool
+
 	filter      string // "all", "enabled", "disabled"
 
 	// Form inputs
@@ -114,7 +103,7 @@ func New(cfg config.Config) Model {
 		cfg:              cfg,
 		currentView:      ViewList,
 		filter:           "all",
-		sortAsc:          true,
+
 		scheduleInput:    si,
 		commandInput:     ci,
 		descriptionInput: di,
