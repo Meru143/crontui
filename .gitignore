@@ -1,0 +1,44 @@
+# Binaries
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+crontui
+
+# Test binary
+*.test
+
+# Output of go coverage
+*.out
+coverage.html
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Build
+dist/
+
+# Config (user-specific)
+*.local.yaml
+
+# Agent / AI config
+.agent/
+.agents/
+.gemini/
+skills-lock.json
+
+# Planning docs (not for repo)
+2026-02-26-crontui-prd.md
+2026-02-26-crontui-todo.md
+
+# Go
+go.sum
