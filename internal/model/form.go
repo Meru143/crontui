@@ -16,7 +16,9 @@ const (
 	formFieldSchedule    = 0
 	formFieldCommand     = 1
 	formFieldDescription = 2
-	formFieldCount       = 3
+	formFieldWorkingDir  = 3
+	formFieldMailto      = 4
+	formFieldCount       = 5
 )
 
 // updateForm handles key events in the add/edit form view.
@@ -50,6 +52,10 @@ func (m Model) updateForm(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 			m.commandInput, cmd = m.commandInput.Update(msg)
 		case formFieldDescription:
 			m.descriptionInput, cmd = m.descriptionInput.Update(msg)
+		case formFieldWorkingDir:
+			m.workingDirInput, cmd = m.workingDirInput.Update(msg)
+		case formFieldMailto:
+			m.mailtoInput, cmd = m.mailtoInput.Update(msg)
 		}
 		return m, cmd
 	}
@@ -60,6 +66,8 @@ func (m *Model) focusCurrentField() {
 	m.scheduleInput.Blur()
 	m.commandInput.Blur()
 	m.descriptionInput.Blur()
+	m.workingDirInput.Blur()
+	m.mailtoInput.Blur()
 
 	switch m.formFocusIndex {
 	case formFieldSchedule:
@@ -68,6 +76,10 @@ func (m *Model) focusCurrentField() {
 		m.commandInput.Focus()
 	case formFieldDescription:
 		m.descriptionInput.Focus()
+	case formFieldWorkingDir:
+		m.workingDirInput.Focus()
+	case formFieldMailto:
+		m.mailtoInput.Focus()
 	}
 }
 
@@ -101,6 +113,8 @@ func (m Model) saveForm() (tea.Model, tea.Cmd) {
 	schedule := strings.TrimSpace(m.scheduleInput.Value())
 	command := strings.TrimSpace(m.commandInput.Value())
 	description := strings.TrimSpace(m.descriptionInput.Value())
+	workingDir := strings.TrimSpace(m.workingDirInput.Value())
+	mailto := strings.TrimSpace(m.mailtoInput.Value())
 
 	// Validate
 	if schedule == "" {
@@ -132,6 +146,8 @@ func (m Model) saveForm() (tea.Model, tea.Cmd) {
 			Command:     command,
 			Description: description,
 			Enabled:     true,
+			WorkingDir:  workingDir,
+			Mailto:      mailto,
 		})
 		m.statusMessage = "Job added successfully"
 	} else {
@@ -141,6 +157,8 @@ func (m Model) saveForm() (tea.Model, tea.Cmd) {
 				m.jobs[i].Schedule = schedule
 				m.jobs[i].Command = command
 				m.jobs[i].Description = description
+				m.jobs[i].WorkingDir = workingDir
+				m.jobs[i].Mailto = mailto
 				break
 			}
 		}
@@ -213,6 +231,22 @@ func (m Model) viewForm() string {
 	}
 	b.WriteString(descLabel + "\n")
 	b.WriteString("  " + m.descriptionInput.View() + "\n\n")
+
+	// Working directory field
+	wdLabel := "  Working Dir (optional):"
+	if m.formFocusIndex == formFieldWorkingDir {
+		wdLabel = styles.TitleStyle.Render(wdLabel)
+	}
+	b.WriteString(wdLabel + "\n")
+	b.WriteString("  " + m.workingDirInput.View() + "\n\n")
+
+	// Mailto field
+	mailtoLabel := "  Mailto (optional):"
+	if m.formFocusIndex == formFieldMailto {
+		mailtoLabel = styles.TitleStyle.Render(mailtoLabel)
+	}
+	b.WriteString(mailtoLabel + "\n")
+	b.WriteString("  " + m.mailtoInput.View() + "\n\n")
 
 	// Help
 	b.WriteString(styles.HelpStyle.Render("  Tab cycle fields │ Ctrl+S save │ Esc cancel") + "\n")

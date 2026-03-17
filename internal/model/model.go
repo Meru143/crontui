@@ -20,6 +20,8 @@ const (
 	ViewJobDetail
 	ViewConfirmDelete
 	ViewSearch
+	ViewRunOutput
+	ViewConfirmRemoveAll
 )
 
 // SortField represents column to sort by.
@@ -55,9 +57,14 @@ type Model struct {
 	scheduleInput    textinput.Model
 	commandInput     textinput.Model
 	descriptionInput textinput.Model
+	workingDirInput  textinput.Model
+	mailtoInput      textinput.Model
 	formFocusIndex   int
 	formError        string
 	formPreview      string
+
+	// Run output
+	runOutput string
 
 	// Status
 	statusMessage string
@@ -95,6 +102,14 @@ func New(cfg config.Config) Model {
 	di.Placeholder = "Description (optional)"
 	di.CharLimit = 128
 
+	wdi := textinput.New()
+	wdi.Placeholder = "/home/user (optional)"
+	wdi.CharLimit = 256
+
+	mi := textinput.New()
+	mi.Placeholder = "user@example.com (optional)"
+	mi.CharLimit = 128
+
 	return Model{
 		cfg:              cfg,
 		currentView:      ViewList,
@@ -103,6 +118,8 @@ func New(cfg config.Config) Model {
 		scheduleInput:    si,
 		commandInput:     ci,
 		descriptionInput: di,
+		workingDirInput:  wdi,
+		mailtoInput:      mi,
 	}
 }
 
@@ -145,8 +162,12 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m.updateBackup(msg)
 		case ViewConfirmDelete:
 			return m.updateConfirmDelete(msg)
+		case ViewConfirmRemoveAll:
+			return m.updateConfirmRemoveAll(msg)
 		case ViewSearch:
 			return m.updateSearch(msg)
+		case ViewRunOutput:
+			return m.updateRunOutput(msg)
 		}
 	}
 
@@ -162,6 +183,10 @@ func (m Model) View() string {
 		return m.viewBackup()
 	case ViewConfirmDelete:
 		return m.viewConfirmDelete()
+	case ViewConfirmRemoveAll:
+		return m.viewConfirmRemoveAll()
+	case ViewRunOutput:
+		return m.viewRunOutput()
 	default:
 		return m.viewList()
 	}

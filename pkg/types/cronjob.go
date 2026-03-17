@@ -10,6 +10,8 @@ type CronJob struct {
 	Description string
 	Enabled     bool
 	EnvVars     map[string]string
+	WorkingDir  string
+	Mailto      string
 }
 
 // FormData holds form field values during add/edit.
@@ -17,7 +19,9 @@ type FormData struct {
 	Schedule    string
 	Command     string
 	Description string
-	ActiveField int // 0=schedule, 1=command, 2=description
+	WorkingDir  string
+	Mailto      string
+	ActiveField int // 0=schedule, 1=command, 2=description, 3=workingDir, 4=mailto
 }
 
 // Backup represents a saved crontab backup file.

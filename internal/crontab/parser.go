@@ -11,6 +11,8 @@ import (
 //   - Standard 5-field cron lines
 //   - Commented-out cron lines (disabled jobs)
 //   - Description annotations (# description: ...)
+//   - Working directory annotations (# workingdir: ...)
+//   - Mailto annotations (# mailto: ...)
 //   - Environment variable lines (VAR=value)
 //   - Blank lines and standalone comments
 func ParseCrontab(raw string) []types.CronJob {
@@ -18,6 +20,8 @@ func ParseCrontab(raw string) []types.CronJob {
 	var jobs []types.CronJob
 	id := 1
 	pendingDescription := ""
+	pendingWorkingDir := ""
+	pendingMailto := ""
 
 	for _, line := range lines {
 		trimmed := strings.TrimSpace(line)
@@ -25,6 +29,8 @@ func ParseCrontab(raw string) []types.CronJob {
 		// Skip blank lines
 		if trimmed == "" {
 			pendingDescription = ""
+			pendingWorkingDir = ""
+			pendingMailto = ""
 			continue
 		}
 
@@ -34,9 +40,23 @@ func ParseCrontab(raw string) []types.CronJob {
 			continue
 		}
 
+		// Check for working directory annotation: # workingdir: /path
+		if strings.HasPrefix(trimmed, "# workingdir:") {
+			pendingWorkingDir = strings.TrimSpace(strings.TrimPrefix(trimmed, "# workingdir:"))
+			continue
+		}
+
+		// Check for mailto annotation: # mailto: user@example.com
+		if strings.HasPrefix(trimmed, "# mailto:") {
+			pendingMailto = strings.TrimSpace(strings.TrimPrefix(trimmed, "# mailto:"))
+			continue
+		}
+
 		// Skip environment variable lines (e.g. SHELL=/bin/bash)
 		if isEnvVar(trimmed) {
 			pendingDescription = ""
+			pendingWorkingDir = ""
+			pendingMailto = ""
 			continue
 		}
 
@@ -51,13 +71,19 @@ func ParseCrontab(raw string) []types.CronJob {
 					Command:     command,
 					Description: pendingDescription,
 					Enabled:     false,
+					WorkingDir:  pendingWorkingDir,
+					Mailto:      pendingMailto,
 				})
 				id++
 				pendingDescription = ""
+				pendingWorkingDir = ""
+				pendingMailto = ""
 				continue
 			}
 			// Standalone comment — skip
 			pendingDescription = ""
+			pendingWorkingDir = ""
+			pendingMailto = ""
 			continue
 		}
 
@@ -70,9 +96,13 @@ func ParseCrontab(raw string) []types.CronJob {
 				Command:     command,
 				Description: pendingDescription,
 				Enabled:     true,
+				WorkingDir:  pendingWorkingDir,
+				Mailto:      pendingMailto,
 			})
 			id++
 			pendingDescription = ""
+			pendingWorkingDir = ""
+			pendingMailto = ""
 			continue
 		}
 
@@ -86,14 +116,20 @@ func ParseCrontab(raw string) []types.CronJob {
 					Command:     command,
 					Description: pendingDescription,
 					Enabled:     true,
+					WorkingDir:  pendingWorkingDir,
+					Mailto:      pendingMailto,
 				})
 				id++
 			}
 			pendingDescription = ""
+			pendingWorkingDir = ""
+			pendingMailto = ""
 			continue
 		}
 
 		pendingDescription = ""
+		pendingWorkingDir = ""
+		pendingMailto = ""
 	}
 
 	return jobs

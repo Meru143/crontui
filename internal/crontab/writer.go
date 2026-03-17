@@ -27,6 +27,20 @@ func WriteCrontab(jobs []types.CronJob) error {
 	return nil
 }
 
+// RemoveCrontab removes the current user's crontab entirely (crontab -r).
+func RemoveCrontab() error {
+	if runtime.GOOS == "windows" {
+		return fmt.Errorf("crontab is not supported on Windows")
+	}
+
+	cmd := exec.Command("crontab", "-r")
+	out, err := cmd.CombinedOutput()
+	if err != nil {
+		return fmt.Errorf("failed to remove crontab: %w (%s)", err, string(out))
+	}
+	return nil
+}
+
 // FormatCrontab formats jobs into crontab file content.
 func FormatCrontab(jobs []types.CronJob) string {
 	var b strings.Builder
@@ -36,6 +50,12 @@ func FormatCrontab(jobs []types.CronJob) string {
 	for _, job := range jobs {
 		if job.Description != "" {
 			b.WriteString(fmt.Sprintf("# description: %s\n", job.Description))
+		}
+		if job.WorkingDir != "" {
+			b.WriteString(fmt.Sprintf("# workingdir: %s\n", job.WorkingDir))
+		}
+		if job.Mailto != "" {
+			b.WriteString(fmt.Sprintf("# mailto: %s\n", job.Mailto))
 		}
 
 		line := fmt.Sprintf("%s %s", job.Schedule, job.Command)

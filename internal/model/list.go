@@ -2,6 +2,7 @@ package model
 
 import (
 	"fmt"
+	"os/exec"
 	"strings"
 
 	tea "github.com/charmbracelet/bubbletea"
@@ -50,6 +51,8 @@ func (m Model) updateList(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		m.scheduleInput.SetValue("")
 		m.commandInput.SetValue("")
 		m.descriptionInput.SetValue("")
+		m.workingDirInput.SetValue("")
+		m.mailtoInput.SetValue("")
 		m.scheduleInput.Focus()
 		m.formFocusIndex = 0
 		m.formError = ""
@@ -63,6 +66,8 @@ func (m Model) updateList(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 			m.scheduleInput.SetValue(job.Schedule)
 			m.commandInput.SetValue(job.Command)
 			m.descriptionInput.SetValue(job.Description)
+			m.workingDirInput.SetValue(job.WorkingDir)
+			m.mailtoInput.SetValue(job.Mailto)
 			m.scheduleInput.Focus()
 			m.formFocusIndex = 0
 			m.formError = ""
@@ -121,6 +126,31 @@ func (m Model) updateList(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		m.loadJobs()
 		m.statusMessage = "Refreshed"
 		m.statusIsError = false
+
+	case "x":
+		// Run Now
+		if len(jobs) > 0 && m.selectedIndex < len(jobs) {
+			job := jobs[m.selectedIndex]
+			if !job.Enabled {
+				m.statusMessage = "Cannot run disabled job"
+				m.statusIsError = true
+			} else {
+				out, err := exec.Command("sh", "-c", job.Command).CombinedOutput()
+				if err != nil {
+					m.runOutput = fmt.Sprintf("Error: %s\n\n%s", err, string(out))
+				} else if len(out) == 0 {
+					m.runOutput = "(no output)"
+				} else {
+					m.runOutput = string(out)
+				}
+				m.currentView = ViewRunOutput
+			}
+		}
+
+	case "R":
+		// Remove all crontab
+		m.currentView = ViewConfirmRemoveAll
+		m.confirmMessage = "Remove ALL crontab entries? This cannot be undone!"
 	}
 
 	return m, nil
@@ -233,7 +263,7 @@ func (m Model) viewList() string {
 	// Help
 	help := []string{
 		"↑/↓ navigate", "a add", "e/↵ edit", "d delete", "t toggle",
-		"/ search", "f filter", "b backups", "r refresh", "q quit",
+		"x run now", "/ search", "f filter", "b backups", "R remove all", "r refresh", "q quit",
 	}
 	b.WriteString(styles.HelpStyle.Render("  " + strings.Join(help, " │ ")))
 	b.WriteString("\n")
