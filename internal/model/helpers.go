@@ -28,3 +28,11 @@ func clamp(val, lo, hi int) int {
 	}
 	return val
 }
+
+// max returns the larger of a and b.
+func max(a, b int) int {
+	if a > b {
+		return a
+	}
+	return b
+}
