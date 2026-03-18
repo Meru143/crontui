@@ -444,7 +444,7 @@ func runNow(args []string) bool {
 
 	fmt.Printf("Running job #%d: %s\n\n", id, target.Command)
 
-	cmd := exec.Command("sh", "-c", target.Command)
+	cmd := crontab.ExecCommand(target.Command)
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
 

@@ -2,7 +2,6 @@ package model
 
 import (
 	"fmt"
-	"os/exec"
 	"strings"
 
 	tea "github.com/charmbracelet/bubbletea"
@@ -135,7 +134,7 @@ func (m Model) updateList(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 				m.statusMessage = "Cannot run disabled job"
 				m.statusIsError = true
 			} else {
-				out, err := exec.Command("sh", "-c", job.Command).CombinedOutput()
+				out, err := crontab.ExecCommand(job.Command).CombinedOutput()
 				if err != nil {
 					m.runOutput = fmt.Sprintf("Error: %s\n\n%s", err, string(out))
 				} else if len(out) == 0 {
