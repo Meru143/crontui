@@ -22,15 +22,15 @@ const (
 // updateForm handles key events in the add/edit form view.
 func (m Model) updateForm(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	switch msg.String() {
-	case "1", "2", "3", "4", "5", "6":
+	case "alt+1", "alt+2", "alt+3", "alt+4", "alt+5", "alt+6":
 		if m.formFocusIndex == formFieldSchedule {
 			presets := map[string]string{
-				"1": "0 * * * *",
-				"2": "0 0 * * *",
-				"3": "0 0 * * 0",
-				"4": "0 0 1 * *",
-				"5": "0 0 1 1 *",
-				"6": "@reboot",
+				"alt+1": "0 * * * *",
+				"alt+2": "0 0 * * *",
+				"alt+3": "0 0 * * 0",
+				"alt+4": "0 0 1 * *",
+				"alt+5": "0 0 1 1 *",
+				"alt+6": "@reboot",
 			}
 			m.scheduleInput.SetValue(presets[msg.String()])
 			m.scheduleInput.CursorEnd()
@@ -217,7 +217,7 @@ func (m Model) viewForm() string {
 	b.WriteString("  " + m.scheduleInput.View() + "\n")
 
 	// Quick presets
-	presets := styles.HelpStyle.Render("  Presets: */5→every 5min  0 *→hourly  0 0 *→daily  @reboot  @weekly")
+	presets := styles.HelpStyle.Render("  Presets: Alt+1 hourly  Alt+2 daily  Alt+3 weekly  Alt+4 monthly  Alt+5 yearly  Alt+6 reboot")
 	b.WriteString(presets + "\n\n")
 
 	// Validation + preview

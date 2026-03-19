@@ -257,3 +257,48 @@ func TestUpdateBackup_RestoreKeepsSuccessStatus(t *testing.T) {
 		t.Fatalf("jobs length = %d, want 1", len(updated.jobs))
 	}
 }
+
+func TestUpdateForm_ScheduleDigitsAreTypedLiterally(t *testing.T) {
+	m := New(config.DefaultConfig())
+	m.currentView = ViewFormAdd
+	m.formFocusIndex = formFieldSchedule
+	m.focusCurrentField()
+
+	for _, msg := range []tea.KeyMsg{
+		{Type: tea.KeyRunes, Runes: []rune{'1'}},
+		{Type: tea.KeyRunes, Runes: []rune{'-'}},
+		{Type: tea.KeyRunes, Runes: []rune{'5'}},
+	} {
+		next, _ := m.updateForm(msg)
+		var ok bool
+		m, ok = next.(Model)
+		if !ok {
+			t.Fatalf("updateForm returned %T, want model.Model", next)
+		}
+	}
+
+	if got := m.scheduleInput.Value(); got != "1-5" {
+		t.Fatalf("scheduleInput.Value() = %q, want %q", got, "1-5")
+	}
+}
+
+func TestUpdateForm_ScheduleAltDigitAppliesPreset(t *testing.T) {
+	m := New(config.DefaultConfig())
+	m.currentView = ViewFormAdd
+	m.formFocusIndex = formFieldSchedule
+	m.focusCurrentField()
+
+	next, _ := m.updateForm(tea.KeyMsg{
+		Type:  tea.KeyRunes,
+		Runes: []rune{'6'},
+		Alt:   true,
+	})
+	updated, ok := next.(Model)
+	if !ok {
+		t.Fatalf("updateForm returned %T, want model.Model", next)
+	}
+
+	if got := updated.scheduleInput.Value(); got != "@reboot" {
+		t.Fatalf("scheduleInput.Value() = %q, want %q", got, "@reboot")
+	}
+}
