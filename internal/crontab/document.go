@@ -221,12 +221,6 @@ func renderManagedJob(job types.CronJob) []string {
 	if job.Description != "" {
 		lines = append(lines, fmt.Sprintf("# description: %s", job.Description))
 	}
-	if job.WorkingDir != "" {
-		lines = append(lines, fmt.Sprintf("# workingdir: %s", job.WorkingDir))
-	}
-	if job.Mailto != "" {
-		lines = append(lines, fmt.Sprintf("# mailto: %s", job.Mailto))
-	}
 
 	line := fmt.Sprintf("%s %s", job.Schedule, job.Command)
 	if !job.Enabled {

@@ -1,6 +1,7 @@
 package model
 
 import (
+	"strings"
 	"testing"
 
 	"github.com/meru143/crontui/internal/config"
@@ -127,5 +128,25 @@ func TestDemoJobs(t *testing.T) {
 		if j.Command == "" {
 			t.Errorf("demoJobs[%d].Command should not be empty", i)
 		}
+	}
+}
+
+func TestViewForm_DoesNotShowWorkingDirField(t *testing.T) {
+	m := New(config.DefaultConfig())
+	m.currentView = ViewFormAdd
+
+	view := m.viewForm()
+	if strings.Contains(view, "Working Dir") {
+		t.Fatalf("viewForm should not show working directory field:\n%s", view)
+	}
+}
+
+func TestViewForm_DoesNotShowMailtoField(t *testing.T) {
+	m := New(config.DefaultConfig())
+	m.currentView = ViewFormAdd
+
+	view := m.viewForm()
+	if strings.Contains(view, "Mailto") {
+		t.Fatalf("viewForm should not show mailto field:\n%s", view)
 	}
 }

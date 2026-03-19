@@ -52,11 +52,11 @@ func TestFormatCrontab_Annotations(t *testing.T) {
 	if !strings.Contains(out, "# description: My task") {
 		t.Error("missing description annotation")
 	}
-	if !strings.Contains(out, "# workingdir: /home/user") {
-		t.Error("missing workingdir annotation")
+	if strings.Contains(out, "# workingdir:") {
+		t.Error("workingdir annotation should not be emitted")
 	}
-	if !strings.Contains(out, "# mailto: dev@example.com") {
-		t.Error("missing mailto annotation")
+	if strings.Contains(out, "# mailto:") {
+		t.Error("mailto annotation should not be emitted")
 	}
 }
 
@@ -110,11 +110,11 @@ func TestRoundtrip(t *testing.T) {
 		if parsed[i].Enabled != original[i].Enabled {
 			t.Errorf("roundtrip[%d].Enabled = %v, want %v", i, parsed[i].Enabled, original[i].Enabled)
 		}
-		if parsed[i].WorkingDir != original[i].WorkingDir {
-			t.Errorf("roundtrip[%d].WorkingDir = %q, want %q", i, parsed[i].WorkingDir, original[i].WorkingDir)
+		if parsed[i].WorkingDir != "" {
+			t.Errorf("roundtrip[%d].WorkingDir = %q, want empty string", i, parsed[i].WorkingDir)
 		}
-		if parsed[i].Mailto != original[i].Mailto {
-			t.Errorf("roundtrip[%d].Mailto = %q, want %q", i, parsed[i].Mailto, original[i].Mailto)
+		if parsed[i].Mailto != "" {
+			t.Errorf("roundtrip[%d].Mailto = %q, want empty string", i, parsed[i].Mailto)
 		}
 	}
 }

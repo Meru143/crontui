@@ -86,12 +86,6 @@ func FormatCrontab(jobs []types.CronJob) string {
 		if job.Description != "" {
 			b.WriteString(fmt.Sprintf("# description: %s\n", job.Description))
 		}
-		if job.WorkingDir != "" {
-			b.WriteString(fmt.Sprintf("# workingdir: %s\n", job.WorkingDir))
-		}
-		if job.Mailto != "" {
-			b.WriteString(fmt.Sprintf("# mailto: %s\n", job.Mailto))
-		}
 
 		line := fmt.Sprintf("%s %s", job.Schedule, job.Command)
 		if !job.Enabled {
