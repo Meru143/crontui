@@ -45,11 +45,27 @@ Jobs created this way run inside the WSL/Linux environment, not in native Window
 
 ## Installation
 
-### From source
+### Stable release (recommended)
 
 ```bash
 go install github.com/meru143/crontui@latest
 ```
+
+`@latest` installs the newest semver tag, not necessarily the newest commit on `master`.
+
+### Latest `master` commit
+
+```bash
+go install github.com/meru143/crontui@master
+```
+
+Use this when you want the newest unreleased changes before the next tagged release.
+
+### Prebuilt binaries
+
+Download the latest release artifacts from the GitHub Releases page:
+
+- [Releases](https://github.com/meru143/crontui/releases)
 
 ### Build locally
 
@@ -216,6 +232,18 @@ CRONTUI_BACKUP_DIR
 CRONTUI_LOG_LEVEL
 CRONTUI_DATE_FORMAT
 ```
+
+## Release Process
+
+For maintainers, `@latest` moves only when a new semver tag is created.
+
+1. Push the verified release commit to `master`.
+2. Open GitHub Actions and run the `Manual Release Tag` workflow.
+3. Choose `patch`, `minor`, or `major`.
+4. The workflow creates and pushes the next `v*` tag from `master`.
+5. The tag triggers the `Release` workflow, which builds and publishes GitHub release artifacts.
+
+The manual tag workflow is defined in [.github/workflows/manual-release.yml](C:/Users/merup/Downloads/crontui/.github/workflows/manual-release.yml). The tag-driven release workflow is [.github/workflows/release.yml](C:/Users/merup/Downloads/crontui/.github/workflows/release.yml). For a short maintainer checklist, see [RELEASING.md](C:/Users/merup/Downloads/crontui/RELEASING.md).
 
 ## Troubleshooting
 
