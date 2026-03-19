@@ -118,3 +118,43 @@ func TestRoundtrip(t *testing.T) {
 		}
 	}
 }
+
+func TestWriteDocument_PreservesEnvAssignments(t *testing.T) {
+	raw := "SHELL=/bin/bash\nPATH=/usr/local/bin:/usr/bin\n0 * * * * /usr/bin/backup\n"
+
+	doc, err := ParseDocument(raw)
+	if err != nil {
+		t.Fatalf("ParseDocument: %v", err)
+	}
+
+	jobs := doc.Jobs()
+	jobs[0].Command = "/usr/bin/backup --full"
+	if err := doc.ReplaceJobs(jobs); err != nil {
+		t.Fatalf("ReplaceJobs: %v", err)
+	}
+
+	oldWriteRaw := writeRawCrontabFn
+	defer func() {
+		writeRawCrontabFn = oldWriteRaw
+	}()
+
+	var wrote string
+	writeRawCrontabFn = func(content string) error {
+		wrote = content
+		return nil
+	}
+
+	if err := WriteDocument(doc); err != nil {
+		t.Fatalf("WriteDocument: %v", err)
+	}
+
+	for _, want := range []string{
+		"SHELL=/bin/bash",
+		"PATH=/usr/local/bin:/usr/bin",
+		"0 * * * * /usr/bin/backup --full",
+	} {
+		if !strings.Contains(wrote, want) {
+			t.Fatalf("WriteDocument output missing %q\nfull output:\n%s", want, wrote)
+		}
+	}
+}

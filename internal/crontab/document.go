@@ -21,10 +21,10 @@ type documentEntry struct {
 }
 
 type jobEntry struct {
-	job           types.CronJob
-	rawLine       string
-	rawPrefix     []string
-	dirty         bool
+	job       types.CronJob
+	rawLine   string
+	rawPrefix []string
+	dirty     bool
 }
 
 type pendingAnnotations struct {

@@ -5,6 +5,7 @@ import (
 	"os"
 	"path/filepath"
 	"testing"
+	"time"
 
 	"github.com/meru143/crontui/internal/config"
 )
@@ -115,5 +116,89 @@ func TestPruneBackups_NoopWhenUnderLimit(t *testing.T) {
 	remaining, _ := ListBackups(cfg)
 	if len(remaining) != 1 {
 		t.Errorf("expected 1 backup (noop prune), got %d", len(remaining))
+	}
+}
+
+func TestRestoreBackup_WritesRawContent(t *testing.T) {
+	tmp := t.TempDir()
+	cfg := config.Config{BackupDir: tmp, MaxBackups: 10}
+
+	raw := "SHELL=/bin/bash\n# @hourly /usr/bin/hourly\n"
+	if err := os.WriteFile(filepath.Join(tmp, "restore.bak"), []byte(raw), 0o644); err != nil {
+		t.Fatalf("write backup: %v", err)
+	}
+
+	oldCreateBackup := createBackupFn
+	oldWriteRaw := writeRawCrontabFn
+	defer func() {
+		createBackupFn = oldCreateBackup
+		writeRawCrontabFn = oldWriteRaw
+	}()
+
+	createdBackup := false
+	var wrote string
+
+	createBackupFn = func(config.Config) (string, error) {
+		createdBackup = true
+		return filepath.Join(tmp, "pre-restore.bak"), nil
+	}
+	writeRawCrontabFn = func(content string) error {
+		wrote = content
+		return nil
+	}
+
+	if err := RestoreBackup(cfg, "restore.bak"); err != nil {
+		t.Fatalf("RestoreBackup: %v", err)
+	}
+	if !createdBackup {
+		t.Fatal("expected RestoreBackup to create a pre-restore backup")
+	}
+	if wrote != raw {
+		t.Fatalf("restored raw mismatch\n--- got ---\n%s\n--- want ---\n%s", wrote, raw)
+	}
+}
+
+func TestCreateBackup_PrunesWhenOverLimit(t *testing.T) {
+	tmp := t.TempDir()
+	cfg := config.Config{BackupDir: tmp, MaxBackups: 2}
+
+	oldReadCrontab := readCrontabFn
+	oldTimeNow := timeNow
+	defer func() {
+		readCrontabFn = oldReadCrontab
+		timeNow = oldTimeNow
+	}()
+
+	readCrontabFn = func() (string, error) {
+		return "0 * * * * /usr/bin/cmd\n", nil
+	}
+
+	times := []time.Time{
+		time.Date(2025, 1, 1, 0, 0, 0, 0, time.UTC),
+		time.Date(2025, 1, 2, 0, 0, 0, 0, time.UTC),
+		time.Date(2025, 1, 3, 0, 0, 0, 0, time.UTC),
+	}
+	timeIndex := 0
+	timeNow = func() time.Time {
+		current := times[timeIndex]
+		timeIndex++
+		return current
+	}
+
+	for i := 0; i < 3; i++ {
+		if _, err := CreateBackup(cfg); err != nil {
+			t.Fatalf("CreateBackup #%d: %v", i, err)
+		}
+	}
+
+	files, err := filepath.Glob(filepath.Join(tmp, "*.bak"))
+	if err != nil {
+		t.Fatalf("Glob backups: %v", err)
+	}
+	if len(files) != 2 {
+		t.Fatalf("expected 2 backups after create+prune, got %d", len(files))
+	}
+	if filepath.Base(files[0]) == "crontab_20250101_000000.bak" || filepath.Base(files[1]) == "crontab_20250101_000000.bak" {
+		t.Fatalf("oldest backup should have been pruned, got files %v", files)
 	}
 }

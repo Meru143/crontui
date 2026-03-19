@@ -12,23 +12,34 @@ import (
 	"github.com/meru143/crontui/pkg/types"
 )
 
+var (
+	readCrontabFn  = ReadCrontab
+	createBackupFn = CreateBackup
+	timeNow        = time.Now
+)
+
 // CreateBackup saves the current crontab to a backup file.
 func CreateBackup(cfg config.Config) (string, error) {
 	if err := os.MkdirAll(cfg.BackupDir, 0o755); err != nil {
 		return "", fmt.Errorf("failed to create backup directory: %w", err)
 	}
 
-	raw, err := ReadCrontab()
+	raw, err := readCrontabFn()
 	if err != nil {
 		return "", fmt.Errorf("failed to read crontab for backup: %w", err)
 	}
 
-	timestamp := time.Now().Format("20060102_150405")
+	timestamp := timeNow().Format("20060102_150405")
 	filename := fmt.Sprintf("crontab_%s.bak", timestamp)
 	path := filepath.Join(cfg.BackupDir, filename)
 
 	if err := os.WriteFile(path, []byte(raw), 0o644); err != nil {
 		return "", fmt.Errorf("failed to write backup file: %w", err)
+	}
+	if cfg.MaxBackups > 0 {
+		if err := PruneBackups(cfg); err != nil {
+			return "", fmt.Errorf("failed to prune backups: %w", err)
+		}
 	}
 
 	return path, nil
@@ -89,12 +100,11 @@ func RestoreBackup(cfg config.Config, filename string) error {
 	}
 
 	// Backup current crontab before restoring
-	if _, err := CreateBackup(cfg); err != nil {
+	if _, err := createBackupFn(cfg); err != nil {
 		return fmt.Errorf("failed to backup current crontab before restore: %w", err)
 	}
 
-	jobs := ParseCrontab(string(content))
-	return WriteCrontab(jobs)
+	return writeRawCrontabFn(string(content))
 }
 
 // PruneBackups keeps only the most recent maxBackups files.

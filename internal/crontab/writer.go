@@ -6,23 +6,58 @@ import (
 	"runtime"
 	"strings"
 
+	"github.com/meru143/crontui/internal/config"
 	"github.com/meru143/crontui/pkg/types"
+)
+
+var (
+	execCommand       = exec.Command
+	writeRawCrontabFn = WriteRawCrontab
 )
 
 // WriteCrontab writes the given jobs back to the system crontab.
 // It creates a full crontab string from the jobs and pipes it to `crontab -`.
 func WriteCrontab(jobs []types.CronJob) error {
+	content := FormatCrontab(jobs)
+	return WriteRawCrontab(content)
+}
+
+// WriteRawCrontab writes raw crontab text directly to the system crontab.
+func WriteRawCrontab(raw string) error {
 	if runtime.GOOS == "windows" {
 		return fmt.Errorf("crontab is not supported on Windows")
 	}
 
-	content := FormatCrontab(jobs)
-
-	cmd := exec.Command("crontab", "-")
-	cmd.Stdin = strings.NewReader(content)
+	cmd := execCommand("crontab", "-")
+	cmd.Stdin = strings.NewReader(raw)
 	out, err := cmd.CombinedOutput()
 	if err != nil {
 		return fmt.Errorf("failed to write crontab: %w (%s)", err, string(out))
+	}
+	return nil
+}
+
+// WriteDocument writes a parsed crontab document back to the system crontab.
+func WriteDocument(doc *Document) error {
+	if doc == nil {
+		return fmt.Errorf("document is required")
+	}
+	return writeRawCrontabFn(doc.Render())
+}
+
+// WriteDocumentWithBackup creates a backup, writes the document, then prunes old backups.
+func WriteDocumentWithBackup(cfg config.Config, doc *Document) error {
+	if doc == nil {
+		return fmt.Errorf("document is required")
+	}
+	if _, err := createBackupFn(cfg); err != nil {
+		return err
+	}
+	if err := writeRawCrontabFn(doc.Render()); err != nil {
+		return err
+	}
+	if err := PruneBackups(cfg); err != nil {
+		return err
 	}
 	return nil
 }
@@ -33,7 +68,7 @@ func RemoveCrontab() error {
 		return fmt.Errorf("crontab is not supported on Windows")
 	}
 
-	cmd := exec.Command("crontab", "-r")
+	cmd := execCommand("crontab", "-r")
 	out, err := cmd.CombinedOutput()
 	if err != nil {
 		return fmt.Errorf("failed to remove crontab: %w (%s)", err, string(out))
