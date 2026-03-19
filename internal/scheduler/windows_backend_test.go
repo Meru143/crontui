@@ -150,6 +150,32 @@ func TestWindowsBackend_SaveJobsCreatesUpdatesAndDeletesTasks(t *testing.T) {
 	}
 }
 
+func TestRenderRegisterTaskScript_FallsBackWhenUsernameEnvUnset(t *testing.T) {
+	t.Setenv("USERNAME", "")
+	t.Setenv("USER", "ci-runner")
+
+	script, err := renderRegisterTaskScript(windowsTaskSpec{
+		TaskPath:    `\CronTUI-Test\`,
+		TaskName:    "job-9",
+		Source:      encodeTaskSource("0 9 * * 1-5"),
+		Description: "weekday job",
+		Command:     `Write-Output "hello"`,
+		Enabled:     true,
+		Triggers: []windowsTriggerSpec{
+			{Type: windowsTriggerDaily, AtHour: 9, AtMinute: 0},
+		},
+	})
+	if err != nil {
+		t.Fatalf("renderRegisterTaskScript returned error: %v", err)
+	}
+	if !strings.Contains(script, "<UserId>ci-runner</UserId>") {
+		t.Fatalf("script = %q, want fallback user embedded in XML", script)
+	}
+	if !strings.Contains(script, "-User 'ci-runner'") {
+		t.Fatalf("script = %q, want Register-ScheduledTask to use fallback user", script)
+	}
+}
+
 func jsonEscape(value string) string {
 	replacer := strings.NewReplacer(`\`, `\\`, `"`, `\"`)
 	return replacer.Replace(value)

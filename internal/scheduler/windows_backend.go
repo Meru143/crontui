@@ -7,6 +7,7 @@ import (
 	"encoding/xml"
 	"fmt"
 	"os"
+	"os/user"
 	"path/filepath"
 	"slices"
 	"strings"
@@ -215,7 +216,12 @@ func parseWindowsTaskRecords(out []byte) ([]windowsTaskRecord, error) {
 }
 
 func renderRegisterTaskScript(spec windowsTaskSpec) (string, error) {
-	xmlContent, err := renderTaskXML(spec)
+	taskUser, err := resolveWindowsTaskUser()
+	if err != nil {
+		return "", err
+	}
+
+	xmlContent, err := renderTaskXML(spec, taskUser)
 	if err != nil {
 		return "", err
 	}
@@ -223,19 +229,14 @@ func renderRegisterTaskScript(spec windowsTaskSpec) (string, error) {
 	return fmt.Sprintf(`$xml = @'
 %s
 '@
-Register-ScheduledTask -TaskName '%s' -TaskPath '%s' -Xml $xml -User $env:USERNAME -Force | Out-Null`, xmlContent, spec.TaskName, spec.TaskPath), nil
+Register-ScheduledTask -TaskName '%s' -TaskPath '%s' -Xml $xml -User '%s' -Force | Out-Null`, xmlContent, spec.TaskName, spec.TaskPath, taskUser), nil
 }
 
 func unregisterTaskScript(taskPath, taskName string) string {
 	return fmt.Sprintf(`Unregister-ScheduledTask -TaskName '%s' -TaskPath '%s' -Confirm:$false -ErrorAction SilentlyContinue | Out-Null`, taskName, taskPath)
 }
 
-func renderTaskXML(spec windowsTaskSpec) (string, error) {
-	user := os.Getenv("USERNAME")
-	if user == "" {
-		return "", fmt.Errorf("USERNAME is required to register Windows scheduled tasks")
-	}
-
+func renderTaskXML(spec windowsTaskSpec, taskUser string) (string, error) {
 	triggerXML, err := renderTriggerXML(spec.Triggers[0], time.Now())
 	if err != nil {
 		return "", err
@@ -281,12 +282,33 @@ func renderTaskXML(spec windowsTaskSpec) (string, error) {
 		xmlEscape(spec.Description),
 		xmlEscape(spec.TaskPath),
 		xmlEscape(spec.TaskName),
-		xmlEscape(user),
+		xmlEscape(taskUser),
 		spec.Enabled,
 		triggerXML,
 		xmlEscape(execute),
 		xmlEscape(arguments),
 	), nil
+}
+
+func resolveWindowsTaskUser() (string, error) {
+	if value := strings.TrimSpace(os.Getenv("USERNAME")); value != "" {
+		return value, nil
+	}
+	if value := strings.TrimSpace(os.Getenv("USER")); value != "" {
+		return value, nil
+	}
+
+	current, err := user.Current()
+	if err == nil {
+		if value := strings.TrimSpace(current.Username); value != "" {
+			return value, nil
+		}
+	}
+
+	if err != nil {
+		return "", fmt.Errorf("resolve Windows scheduled task user: %w", err)
+	}
+	return "", fmt.Errorf("current user is required to register Windows scheduled tasks")
 }
 
 func renderTriggerXML(trigger windowsTriggerSpec, now time.Time) (string, error) {

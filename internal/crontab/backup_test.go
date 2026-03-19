@@ -64,6 +64,41 @@ func TestListBackups_SortedNewestFirst(t *testing.T) {
 	}
 }
 
+func TestListBackups_PrefersTimestampInFilenameOverModTime(t *testing.T) {
+	tmp := t.TempDir()
+	cfg := config.Config{BackupDir: tmp, MaxBackups: 10}
+
+	oldest := filepath.Join(tmp, "crontab_20250101_000000.bak")
+	newest := filepath.Join(tmp, "crontab_20250102_000000.bak")
+
+	if err := os.WriteFile(oldest, []byte("0 * * * * old\n"), 0o644); err != nil {
+		t.Fatalf("write oldest backup: %v", err)
+	}
+	if err := os.WriteFile(newest, []byte("0 * * * * new\n"), 0o644); err != nil {
+		t.Fatalf("write newest backup: %v", err)
+	}
+
+	// Reverse the file modtimes so filename timestamps, not filesystem timing,
+	// determine the logical backup order.
+	if err := os.Chtimes(oldest, time.Date(2026, time.March, 19, 12, 0, 0, 0, time.UTC), time.Date(2026, time.March, 19, 12, 0, 0, 0, time.UTC)); err != nil {
+		t.Fatalf("Chtimes(oldest): %v", err)
+	}
+	if err := os.Chtimes(newest, time.Date(2026, time.March, 18, 12, 0, 0, 0, time.UTC), time.Date(2026, time.March, 18, 12, 0, 0, 0, time.UTC)); err != nil {
+		t.Fatalf("Chtimes(newest): %v", err)
+	}
+
+	backups, err := ListBackups(cfg)
+	if err != nil {
+		t.Fatalf("ListBackups: %v", err)
+	}
+	if len(backups) != 2 {
+		t.Fatalf("expected 2 backups, got %d", len(backups))
+	}
+	if backups[0].Filename != filepath.Base(newest) {
+		t.Fatalf("backups[0].Filename = %q, want %q", backups[0].Filename, filepath.Base(newest))
+	}
+}
+
 func TestListBackups_IgnoresNonBakFiles(t *testing.T) {
 	tmp := t.TempDir()
 	cfg := config.Config{BackupDir: tmp, MaxBackups: 10}

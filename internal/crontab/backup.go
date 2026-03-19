@@ -66,6 +66,11 @@ func ListBackups(cfg config.Config) ([]types.Backup, error) {
 			continue
 		}
 
+		created := info.ModTime()
+		if parsed, ok := parseBackupTimestamp(entry.Name()); ok {
+			created = parsed
+		}
+
 		// Count jobs by reading content
 		path := filepath.Join(cfg.BackupDir, entry.Name())
 		content, err := os.ReadFile(path)
@@ -76,7 +81,7 @@ func ListBackups(cfg config.Config) ([]types.Backup, error) {
 
 		backups = append(backups, types.Backup{
 			Filename: entry.Name(),
-			Created:  info.ModTime(),
+			Created:  created,
 			JobCount: len(jobs),
 			Size:     info.Size(),
 		})
@@ -84,6 +89,9 @@ func ListBackups(cfg config.Config) ([]types.Backup, error) {
 
 	// Sort newest first
 	sort.Slice(backups, func(i, j int) bool {
+		if backups[i].Created.Equal(backups[j].Created) {
+			return backups[i].Filename > backups[j].Filename
+		}
 		return backups[i].Created.After(backups[j].Created)
 	})
 
@@ -127,4 +135,17 @@ func PruneBackups(cfg config.Config) error {
 	}
 
 	return nil
+}
+
+func parseBackupTimestamp(filename string) (time.Time, bool) {
+	if !strings.HasPrefix(filename, "crontab_") || !strings.HasSuffix(filename, ".bak") {
+		return time.Time{}, false
+	}
+
+	stamp := strings.TrimSuffix(strings.TrimPrefix(filename, "crontab_"), ".bak")
+	parsed, err := time.Parse("20060102_150405", stamp)
+	if err != nil {
+		return time.Time{}, false
+	}
+	return parsed, true
 }

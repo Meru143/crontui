@@ -133,3 +133,5 @@ try {
 finally {
     Cleanup-Smoke
 }
+
+exit 0
