@@ -2,7 +2,9 @@ package cli
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
+	"io"
 	"log"
 	"os"
 	"os/exec"
@@ -14,6 +16,7 @@ import (
 	"github.com/meru143/crontui/internal/config"
 	"github.com/meru143/crontui/internal/cron"
 	"github.com/meru143/crontui/internal/crontab"
+	"github.com/meru143/crontui/internal/scheduler"
 	"github.com/meru143/crontui/internal/version"
 	"github.com/meru143/crontui/pkg/types"
 )
@@ -21,10 +24,13 @@ import (
 // Debug controls verbose logging output.
 var Debug bool
 
+type backend = scheduler.Backend
+
 var (
-	cliReadCrontab = crontab.ReadCrontab
-	cliExecCommand = crontab.ExecCommand
-	exitCLI        = os.Exit
+	cliBackendFn           = scheduler.DefaultBackend
+	stdout       io.Writer = os.Stdout
+	stderr       io.Writer = os.Stderr
+	exitCLI                = os.Exit
 )
 
 func parseInvocation(args []string) (cmd string, subArgs []string, debug bool, ok bool) {
@@ -79,21 +85,21 @@ func Run(args []string) bool {
 
 	Debug = debug
 	if Debug {
-		log.SetOutput(os.Stderr)
+		log.SetOutput(stderr)
 		log.SetPrefix("[debug] ")
 		log.Println("debug mode enabled")
 	}
 
 	cfg, err := config.Load()
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "Error loading config: %v\n", err)
+		fmt.Fprintf(stderr, "Error loading config: %v\n", err)
 		exitCLI(1)
 		return true
 	}
 
 	switch cmd {
 	case "list", "ls":
-		return runList(subArgs)
+		return runList(cfg, subArgs)
 	case "add":
 		return runAdd(cfg, subArgs)
 	case "delete", "rm":
@@ -111,11 +117,11 @@ func Run(args []string) bool {
 	case "restore":
 		return runRestore(cfg, subArgs)
 	case "export":
-		return runExport(subArgs)
+		return runExport(cfg, subArgs)
 	case "import":
 		return runImport(cfg, subArgs)
 	case "runnow", "run":
-		return runNow(subArgs)
+		return runNow(cfg, subArgs)
 	case "completion", "--completion":
 		return runCompletion(subArgs)
 	case "help", "--help", "-h":
@@ -125,32 +131,30 @@ func Run(args []string) bool {
 		fmt.Println(version.Full())
 		return true
 	default:
-		fmt.Fprintf(os.Stderr, "Unknown command: %s\n\n", cmd)
+		fmt.Fprintf(stderr, "Unknown command: %s\n\n", cmd)
 		printHelp()
 		exitCLI(1)
 		return true
 	}
 }
 
-func runList(args []string) bool {
-	raw, err := cliReadCrontab()
+func runList(cfg config.Config, args []string) bool {
+	jobs, err := cliBackendFn(cfg).LoadJobs()
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
+		fmt.Fprintf(stderr, "Error: %v\n", err)
 		exitCLI(1)
 	}
-
-	jobs := crontab.ParseCrontab(raw)
 
 	// Check for --json flag
 	for _, a := range args {
 		if a == "--json" {
 			data, _ := json.MarshalIndent(jobs, "", "  ")
-			fmt.Println(string(data))
+			fmt.Fprintln(stdout, string(data))
 			return true
 		}
 	}
 
-	w := tabwriter.NewWriter(os.Stdout, 0, 4, 2, ' ', 0)
+	w := tabwriter.NewWriter(stdout, 0, 4, 2, ' ', 0)
 	fmt.Fprintln(w, "ID\tStatus\tSchedule\tCommand\tDescription")
 	fmt.Fprintln(w, "--\t------\t--------\t-------\t-----------")
 
@@ -167,13 +171,14 @@ func runList(args []string) bool {
 
 func runAdd(cfg config.Config, args []string) bool {
 	if len(args) < 2 {
-		fmt.Fprintf(os.Stderr, "Usage: crontui add <schedule> <command> [--desc \"description\"]\n")
+		fmt.Fprintf(stderr, "Usage: crontui add <schedule> <command> [--desc \"description\"]\n")
 		exitCLI(1)
 	}
 
 	schedule := args[0]
 	command := args[1]
 	description := ""
+	backend := cliBackendFn(cfg)
 
 	for i, a := range args {
 		if a == "--desc" && i+1 < len(args) {
@@ -185,17 +190,20 @@ func runAdd(cfg config.Config, args []string) bool {
 	// Validate schedule
 	valid, err := cron.Validate(schedule)
 	if !valid {
-		fmt.Fprintf(os.Stderr, "Invalid schedule: %v\n", err)
+		fmt.Fprintf(stderr, "Invalid schedule: %v\n", err)
+		exitCLI(1)
+	}
+	if err := backend.ValidateManagedSchedule(schedule); err != nil {
+		fmt.Fprintf(stderr, "Unsupported schedule on this platform: %v\n", err)
 		exitCLI(1)
 	}
 
-	doc, err := crontab.LoadDocument()
+	jobs, err := backend.LoadJobs()
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "Error reading crontab: %v\n", err)
+		fmt.Fprintf(stderr, "Error loading jobs: %v\n", err)
 		exitCLI(1)
 	}
 
-	jobs := doc.Jobs()
 	maxID := 0
 	for _, j := range jobs {
 		if j.ID > maxID {
@@ -211,39 +219,33 @@ func runAdd(cfg config.Config, args []string) bool {
 		Enabled:     true,
 	})
 
-	if err := doc.ReplaceJobs(jobs); err != nil {
-		fmt.Fprintf(os.Stderr, "Error updating crontab document: %v\n", err)
+	if err := backend.SaveJobs(cfg, jobs); err != nil {
+		fmt.Fprintf(stderr, "Error saving jobs: %v\n", err)
 		exitCLI(1)
 	}
 
-	if err := crontab.WriteDocumentWithBackup(cfg, doc); err != nil {
-		fmt.Fprintf(os.Stderr, "Error writing crontab: %v\n", err)
-		exitCLI(1)
-	}
-
-	fmt.Printf("Added job #%d: %s %s\n", maxID+1, schedule, command)
+	fmt.Fprintf(stdout, "Added job #%d: %s %s\n", maxID+1, schedule, command)
 	return true
 }
 
 func runDelete(cfg config.Config, args []string) bool {
 	if len(args) < 1 {
-		fmt.Fprintf(os.Stderr, "Usage: crontui delete <job-id>\n")
+		fmt.Fprintf(stderr, "Usage: crontui delete <job-id>\n")
 		exitCLI(1)
 	}
 
 	id, err := strconv.Atoi(args[0])
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "Invalid job ID: %s\n", args[0])
+		fmt.Fprintf(stderr, "Invalid job ID: %s\n", args[0])
 		exitCLI(1)
 	}
 
-	doc, err := crontab.LoadDocument()
+	backend := cliBackendFn(cfg)
+	jobs, err := backend.LoadJobs()
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
+		fmt.Fprintf(stderr, "Error: %v\n", err)
 		exitCLI(1)
 	}
-
-	jobs := doc.Jobs()
 	found := false
 	newJobs := make([]types.CronJob, 0)
 	for _, j := range jobs {
@@ -255,21 +257,16 @@ func runDelete(cfg config.Config, args []string) bool {
 	}
 
 	if !found {
-		fmt.Fprintf(os.Stderr, "Job #%d not found\n", id)
+		fmt.Fprintf(stderr, "Job #%d not found\n", id)
 		exitCLI(1)
 	}
 
-	if err := doc.ReplaceJobs(newJobs); err != nil {
-		fmt.Fprintf(os.Stderr, "Error updating crontab document: %v\n", err)
+	if err := backend.SaveJobs(cfg, newJobs); err != nil {
+		fmt.Fprintf(stderr, "Error: %v\n", err)
 		exitCLI(1)
 	}
 
-	if err := crontab.WriteDocumentWithBackup(cfg, doc); err != nil {
-		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
-		exitCLI(1)
-	}
-
-	fmt.Printf("Deleted job #%d\n", id)
+	fmt.Fprintf(stdout, "Deleted job #%d\n", id)
 	return true
 }
 
@@ -279,23 +276,22 @@ func runToggle(cfg config.Config, args []string, enable bool) bool {
 		if !enable {
 			action = "disable"
 		}
-		fmt.Fprintf(os.Stderr, "Usage: crontui %s <job-id>\n", action)
+		fmt.Fprintf(stderr, "Usage: crontui %s <job-id>\n", action)
 		exitCLI(1)
 	}
 
 	id, err := strconv.Atoi(args[0])
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "Invalid job ID: %s\n", args[0])
+		fmt.Fprintf(stderr, "Invalid job ID: %s\n", args[0])
 		exitCLI(1)
 	}
 
-	doc, err := crontab.LoadDocument()
+	backend := cliBackendFn(cfg)
+	jobs, err := backend.LoadJobs()
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
+		fmt.Fprintf(stderr, "Error: %v\n", err)
 		exitCLI(1)
 	}
-
-	jobs := doc.Jobs()
 	found := false
 	for i := range jobs {
 		if jobs[i].ID == id {
@@ -306,17 +302,12 @@ func runToggle(cfg config.Config, args []string, enable bool) bool {
 	}
 
 	if !found {
-		fmt.Fprintf(os.Stderr, "Job #%d not found\n", id)
+		fmt.Fprintf(stderr, "Job #%d not found\n", id)
 		exitCLI(1)
 	}
 
-	if err := doc.ReplaceJobs(jobs); err != nil {
-		fmt.Fprintf(os.Stderr, "Error updating crontab document: %v\n", err)
-		exitCLI(1)
-	}
-
-	if err := crontab.WriteDocumentWithBackup(cfg, doc); err != nil {
-		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
+	if err := backend.SaveJobs(cfg, jobs); err != nil {
+		fmt.Fprintf(stderr, "Error: %v\n", err)
 		exitCLI(1)
 	}
 
@@ -324,36 +315,36 @@ func runToggle(cfg config.Config, args []string, enable bool) bool {
 	if !enable {
 		action = "disabled"
 	}
-	fmt.Printf("Job #%d %s\n", id, action)
+	fmt.Fprintf(stdout, "Job #%d %s\n", id, action)
 	return true
 }
 
 func runValidate(args []string) bool {
 	if len(args) < 1 {
-		fmt.Fprintf(os.Stderr, "Usage: crontui validate <expression>\n")
+		fmt.Fprintf(stderr, "Usage: crontui validate <expression>\n")
 		exitCLI(1)
 	}
 
 	expr := strings.Join(args, " ")
 	valid, err := cron.Validate(expr)
 	if valid {
-		fmt.Printf("✓ Valid: %s\n", expr)
+		fmt.Fprintf(stdout, "✓ Valid: %s\n", expr)
 
 		// Show next runs
 		if notice, ok := cron.PreviewNotice(expr); ok {
-			fmt.Printf("\nNext runs:\n  %s\n", notice)
+			fmt.Fprintf(stdout, "\nNext runs:\n  %s\n", notice)
 			return true
 		}
 
 		runs, _ := cron.NextRuns(expr, 5)
 		if len(runs) > 0 {
-			fmt.Println("\nNext runs:")
+			fmt.Fprintln(stdout, "\nNext runs:")
 			for i, t := range runs {
-				fmt.Printf("  %d. %s  (%s)\n", i+1, t.Format("Mon Jan 2 15:04:05 2006"), cron.HumanReadable(t))
+				fmt.Fprintf(stdout, "  %d. %s  (%s)\n", i+1, t.Format("Mon Jan 2 15:04:05 2006"), cron.HumanReadable(t))
 			}
 		}
 	} else {
-		fmt.Fprintf(os.Stderr, "✗ Invalid: %v\n", err)
+		fmt.Fprintf(stderr, "✗ Invalid: %v\n", err)
 		exitCLI(1)
 	}
 	return true
@@ -363,63 +354,61 @@ func runPreview(args []string) bool {
 	expr, count, err := parsePreviewArgs(args)
 	if err != nil {
 		if len(args) < 1 {
-			fmt.Fprintf(os.Stderr, "Usage: crontui preview <expression> [count]\n")
+			fmt.Fprintf(stderr, "Usage: crontui preview <expression> [count]\n")
 		} else {
-			fmt.Fprintf(os.Stderr, "Invalid preview arguments: %v\n", err)
+			fmt.Fprintf(stderr, "Invalid preview arguments: %v\n", err)
 		}
 		exitCLI(1)
 	}
 
 	if notice, ok := cron.PreviewNotice(expr); ok {
-		fmt.Printf("Next %d runs for: %s\n\n", count, expr)
-		fmt.Printf("  %s\n", notice)
+		fmt.Fprintf(stdout, "Next %d runs for: %s\n\n", count, expr)
+		fmt.Fprintf(stdout, "  %s\n", notice)
 		return true
 	}
 
 	runs, err := cron.NextRuns(expr, count)
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "Invalid expression: %v\n", err)
+		fmt.Fprintf(stderr, "Invalid expression: %v\n", err)
 		exitCLI(1)
 	}
 
-	fmt.Printf("Next %d runs for: %s\n\n", count, expr)
+	fmt.Fprintf(stdout, "Next %d runs for: %s\n\n", count, expr)
 	for i, t := range runs {
-		fmt.Printf("  %d. %s  (%s)\n", i+1, t.Format("Mon Jan 2 15:04:05 2006"), cron.HumanReadable(t))
+		fmt.Fprintf(stdout, "  %d. %s  (%s)\n", i+1, t.Format("Mon Jan 2 15:04:05 2006"), cron.HumanReadable(t))
 	}
 	return true
 }
 
 func runBackup(cfg config.Config) bool {
-	path, err := crontab.CreateBackup(cfg)
+	path, err := cliBackendFn(cfg).CreateBackup(cfg)
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "Backup failed: %v\n", err)
+		fmt.Fprintf(stderr, "Backup failed: %v\n", err)
 		exitCLI(1)
 	}
-	fmt.Printf("Backup created: %s\n", path)
+	fmt.Fprintf(stdout, "Backup created: %s\n", path)
 	return true
 }
 
 func runRestore(cfg config.Config, args []string) bool {
 	if len(args) < 1 {
-		fmt.Fprintf(os.Stderr, "Usage: crontui restore <filename>\n")
+		fmt.Fprintf(stderr, "Usage: crontui restore <filename>\n")
 		exitCLI(1)
 	}
-	if err := crontab.RestoreBackup(cfg, args[0]); err != nil {
-		fmt.Fprintf(os.Stderr, "Restore failed: %v\n", err)
+	if err := cliBackendFn(cfg).RestoreBackup(cfg, args[0]); err != nil {
+		fmt.Fprintf(stderr, "Restore failed: %v\n", err)
 		exitCLI(1)
 	}
-	fmt.Printf("Restored from %s\n", args[0])
+	fmt.Fprintf(stdout, "Restored from %s\n", args[0])
 	return true
 }
 
-func runExport(args []string) bool {
-	raw, err := cliReadCrontab()
+func runExport(cfg config.Config, args []string) bool {
+	jobs, err := cliBackendFn(cfg).LoadJobs()
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
+		fmt.Fprintf(stderr, "Error: %v\n", err)
 		exitCLI(1)
 	}
-
-	jobs := crontab.ParseCrontab(raw)
 
 	// Check for --format=json
 	format := "json"
@@ -432,11 +421,11 @@ func runExport(args []string) bool {
 	switch format {
 	case "json":
 		data, _ := json.MarshalIndent(jobs, "", "  ")
-		fmt.Println(string(data))
+		fmt.Fprintln(stdout, string(data))
 	case "crontab":
-		fmt.Print(crontab.FormatCrontab(jobs))
+		fmt.Fprint(stdout, crontab.FormatCrontab(jobs))
 	default:
-		fmt.Fprintf(os.Stderr, "Unknown format: %s\n", format)
+		fmt.Fprintf(stderr, "Unknown format: %s\n", format)
 		exitCLI(1)
 	}
 	return true
@@ -444,86 +433,79 @@ func runExport(args []string) bool {
 
 func runImport(cfg config.Config, args []string) bool {
 	if len(args) < 1 {
-		fmt.Fprintf(os.Stderr, "Usage: crontui import <file.json>\n")
+		fmt.Fprintf(stderr, "Usage: crontui import <file.json>\n")
 		exitCLI(1)
 	}
 
 	data, err := os.ReadFile(args[0])
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "Error reading file: %v\n", err)
+		fmt.Fprintf(stderr, "Error reading file: %v\n", err)
 		exitCLI(1)
 	}
 
 	var jobs []types.CronJob
 	if err := json.Unmarshal(data, &jobs); err != nil {
-		fmt.Fprintf(os.Stderr, "Error parsing JSON: %v\n", err)
+		fmt.Fprintf(stderr, "Error parsing JSON: %v\n", err)
 		exitCLI(1)
 	}
 
-	if err := crontab.WriteJobsWithBackup(cfg, jobs); err != nil {
-		fmt.Fprintf(os.Stderr, "Error writing crontab: %v\n", err)
+	backend := cliBackendFn(cfg)
+	for _, job := range jobs {
+		valid, err := cron.Validate(job.Schedule)
+		if !valid || err != nil {
+			fmt.Fprintf(stderr, "Invalid schedule for job #%d: %v\n", job.ID, err)
+			exitCLI(1)
+		}
+		if err := backend.ValidateManagedSchedule(job.Schedule); err != nil {
+			fmt.Fprintf(stderr, "Unsupported schedule for job #%d on this platform: %v\n", job.ID, err)
+			exitCLI(1)
+		}
+	}
+
+	if err := backend.SaveJobs(cfg, jobs); err != nil {
+		fmt.Fprintf(stderr, "Error writing jobs: %v\n", err)
 		exitCLI(1)
 	}
 
-	fmt.Printf("Imported %d jobs\n", len(jobs))
+	fmt.Fprintf(stdout, "Imported %d jobs\n", len(jobs))
 	return true
 }
 
-func runNow(args []string) bool {
+func runNow(cfg config.Config, args []string) bool {
 	if len(args) < 1 {
-		fmt.Fprintf(os.Stderr, "Usage: crontui runnow <job-id>\n")
+		fmt.Fprintf(stderr, "Usage: crontui runnow <job-id>\n")
 		exitCLI(1)
 	}
 
 	id, err := strconv.Atoi(args[0])
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "Invalid job ID: %s\n", args[0])
+		fmt.Fprintf(stderr, "Invalid job ID: %s\n", args[0])
 		exitCLI(1)
 	}
 
-	raw, err := cliReadCrontab()
+	fmt.Fprintf(stdout, "Running job #%d\n\n", id)
+
+	out, err := cliBackendFn(cfg).RunNow(id)
+	if len(out) > 0 {
+		fmt.Fprint(stdout, string(out))
+		if !strings.HasSuffix(string(out), "\n") {
+			fmt.Fprintln(stdout)
+		}
+	}
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
-		exitCLI(1)
-	}
-
-	jobs := crontab.ParseCrontab(raw)
-	var target *types.CronJob
-	for i := range jobs {
-		if jobs[i].ID == id {
-			target = &jobs[i]
-			break
-		}
-	}
-
-	if target == nil {
-		fmt.Fprintf(os.Stderr, "Job #%d not found\n", id)
-		exitCLI(1)
-		return true
-	}
-
-	if !target.Enabled {
-		fmt.Fprintf(os.Stderr, "Job #%d is disabled\n", id)
-		exitCLI(1)
-		return true
-	}
-
-	fmt.Printf("Running job #%d: %s\n\n", id, target.Command)
-
-	cmd := cliExecCommand(target.Command)
-	cmd.Stdout = os.Stdout
-	cmd.Stderr = os.Stderr
-
-	if err := cmd.Run(); err != nil {
-		if exitErr, ok := err.(*exec.ExitError); ok {
-			fmt.Printf("\nJob exited with code %d\n", exitErr.ExitCode())
+		var exitErr *exec.ExitError
+		if errors.As(err, &exitErr) {
+			fmt.Fprintf(stdout, "\nJob exited with code %d\n", exitErr.ExitCode())
 		} else {
-			fmt.Fprintf(os.Stderr, "\nExecution error: %v\n", err)
+			fmt.Fprintf(stderr, "\nExecution error: %v\n", err)
 		}
 		exitCLI(1)
 	}
 
-	fmt.Println("\nJob completed successfully")
+	if len(out) == 0 {
+		fmt.Fprintln(stdout, "(no output)")
+	}
+	fmt.Fprintln(stdout, "\nJob completed successfully")
 	return true
 }
 
@@ -535,20 +517,20 @@ func runCompletion(args []string) bool {
 
 	switch shell {
 	case "bash":
-		fmt.Print(completion.Bash())
+		fmt.Fprint(stdout, completion.Bash())
 	case "zsh":
-		fmt.Print(completion.Zsh())
+		fmt.Fprint(stdout, completion.Zsh())
 	case "fish":
-		fmt.Print(completion.Fish())
+		fmt.Fprint(stdout, completion.Fish())
 	default:
-		fmt.Fprintf(os.Stderr, "Unsupported shell: %s (supported: bash, zsh, fish)\n", shell)
+		fmt.Fprintf(stderr, "Unsupported shell: %s (supported: bash, zsh, fish)\n", shell)
 		exitCLI(1)
 	}
 	return true
 }
 
 func printHelp() {
-	fmt.Println(`CronTUI — Terminal UI for managing cron jobs
+	fmt.Fprintln(stdout, `CronTUI — Terminal UI for managing cron jobs
 
 Usage:
   crontui              Launch interactive TUI

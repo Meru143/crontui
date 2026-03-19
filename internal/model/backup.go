@@ -11,7 +11,7 @@ import (
 
 // loadBackups fetches backups from the backup directory.
 func (m *Model) loadBackups() {
-	backups, err := modelListBackupsFn(m.cfg)
+	backups, err := modelBackendFn(m.cfg).ListBackups(m.cfg)
 	if err != nil {
 		m.statusMessage = "Error loading backups: " + err.Error()
 		m.statusIsError = true
@@ -47,7 +47,7 @@ func (m Model) updateBackup(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	case "enter", "r":
 		if len(m.backups) > 0 && m.selectedIndex < len(m.backups) {
 			backup := m.backups[m.selectedIndex]
-			if err := modelRestoreBackupFn(m.cfg, backup.Filename); err != nil {
+			if err := modelBackendFn(m.cfg).RestoreBackup(m.cfg, backup.Filename); err != nil {
 				m.statusMessage = "Restore failed: " + err.Error()
 				m.statusIsError = true
 			} else {
@@ -64,7 +64,7 @@ func (m Model) updateBackup(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 
 	case "c":
 		// Create new backup
-		path, err := modelCreateBackupFn(m.cfg)
+		path, err := modelBackendFn(m.cfg).CreateBackup(m.cfg)
 		if err != nil {
 			m.statusMessage = "Backup failed: " + err.Error()
 			m.statusIsError = true

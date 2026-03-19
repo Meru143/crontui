@@ -5,7 +5,6 @@ import (
 
 	tea "github.com/charmbracelet/bubbletea"
 
-	"github.com/meru143/crontui/internal/crontab"
 	"github.com/meru143/crontui/internal/styles"
 )
 
@@ -44,7 +43,7 @@ func (m Model) viewRunOutput() string {
 func (m Model) updateConfirmRemoveAll(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	switch msg.String() {
 	case "y", "Y":
-		if err := crontab.RemoveCrontabWithBackup(m.cfg); err != nil {
+		if err := modelBackendFn(m.cfg).RemoveAll(m.cfg); err != nil {
 			m.statusMessage = "Error removing crontab: " + err.Error()
 			m.statusIsError = true
 		} else {

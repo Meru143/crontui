@@ -7,7 +7,6 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 
 	"github.com/meru143/crontui/internal/cron"
-	"github.com/meru143/crontui/internal/crontab"
 	"github.com/meru143/crontui/internal/styles"
 	"github.com/meru143/crontui/pkg/types"
 )
@@ -90,7 +89,7 @@ func (m Model) updateList(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 					break
 				}
 			}
-			if err := crontab.WriteJobsWithBackup(m.cfg, m.jobs); err != nil {
+			if err := modelBackendFn(m.cfg).SaveJobs(m.cfg, m.jobs); err != nil {
 				m.statusMessage = "Error: " + err.Error()
 				m.statusIsError = true
 			} else {
@@ -134,7 +133,7 @@ func (m Model) updateList(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 				m.statusMessage = "Cannot run disabled job"
 				m.statusIsError = true
 			} else {
-				out, err := crontab.ExecCommand(job.Command).CombinedOutput()
+				out, err := modelBackendFn(m.cfg).RunNow(job.ID)
 				if err != nil {
 					m.runOutput = fmt.Sprintf("Error: %s\n\n%s", err, string(out))
 				} else if len(out) == 0 {
@@ -314,7 +313,7 @@ func (m Model) updateConfirmDelete(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 			}
 			m.jobs = newJobs
 
-			if err := crontab.WriteJobsWithBackup(m.cfg, m.jobs); err != nil {
+			if err := modelBackendFn(m.cfg).SaveJobs(m.cfg, m.jobs); err != nil {
 				m.statusMessage = "Error deleting: " + err.Error()
 				m.statusIsError = true
 			} else {

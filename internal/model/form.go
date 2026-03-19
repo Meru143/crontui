@@ -7,7 +7,6 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 
 	"github.com/meru143/crontui/internal/cron"
-	"github.com/meru143/crontui/internal/crontab"
 	"github.com/meru143/crontui/internal/styles"
 	"github.com/meru143/crontui/pkg/types"
 )
@@ -114,6 +113,12 @@ func (m *Model) updateFormPreview() {
 		return
 	}
 
+	if err := modelBackendFn(m.cfg).ValidateManagedSchedule(schedule); err != nil {
+		m.formError = err.Error()
+		m.formPreview = ""
+		return
+	}
+
 	if notice, ok := cron.PreviewNotice(schedule); ok {
 		m.formError = ""
 		m.formPreview = "  " + notice
@@ -151,6 +156,11 @@ func (m Model) saveForm() (tea.Model, tea.Cmd) {
 		return m, nil
 	}
 
+	if err := modelBackendFn(m.cfg).ValidateManagedSchedule(schedule); err != nil {
+		m.formError = err.Error()
+		return m, nil
+	}
+
 	if m.currentView == ViewFormAdd {
 		// Find next ID
 		maxID := 0
@@ -182,9 +192,8 @@ func (m Model) saveForm() (tea.Model, tea.Cmd) {
 
 	m.statusIsError = false
 
-	// Write to crontab
-	if err := crontab.WriteJobsWithBackup(m.cfg, m.jobs); err != nil {
-		m.statusMessage = "Saved in memory but failed to write crontab: " + err.Error()
+	if err := modelBackendFn(m.cfg).SaveJobs(m.cfg, m.jobs); err != nil {
+		m.statusMessage = "Saved in memory but failed to write jobs: " + err.Error()
 		m.statusIsError = true
 	}
 

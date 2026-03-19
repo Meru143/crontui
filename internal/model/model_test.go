@@ -9,8 +9,76 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 
 	"github.com/meru143/crontui/internal/config"
+	"github.com/meru143/crontui/internal/scheduler"
 	"github.com/meru143/crontui/pkg/types"
 )
+
+type stubBackend struct {
+	loadJobsFn                func() ([]types.CronJob, error)
+	saveJobsFn                func(config.Config, []types.CronJob) error
+	createBackupFn            func(config.Config) (string, error)
+	listBackupsFn             func(config.Config) ([]types.Backup, error)
+	restoreBackupFn           func(config.Config, string) error
+	removeAllFn               func(config.Config) error
+	runNowFn                  func(int) ([]byte, error)
+	validateManagedScheduleFn func(string) error
+}
+
+func (s stubBackend) LoadJobs() ([]types.CronJob, error) {
+	if s.loadJobsFn != nil {
+		return s.loadJobsFn()
+	}
+	return nil, nil
+}
+
+func (s stubBackend) SaveJobs(cfg config.Config, jobs []types.CronJob) error {
+	if s.saveJobsFn != nil {
+		return s.saveJobsFn(cfg, jobs)
+	}
+	return nil
+}
+
+func (s stubBackend) CreateBackup(cfg config.Config) (string, error) {
+	if s.createBackupFn != nil {
+		return s.createBackupFn(cfg)
+	}
+	return "", nil
+}
+
+func (s stubBackend) ListBackups(cfg config.Config) ([]types.Backup, error) {
+	if s.listBackupsFn != nil {
+		return s.listBackupsFn(cfg)
+	}
+	return nil, nil
+}
+
+func (s stubBackend) RestoreBackup(cfg config.Config, filename string) error {
+	if s.restoreBackupFn != nil {
+		return s.restoreBackupFn(cfg, filename)
+	}
+	return nil
+}
+
+func (s stubBackend) RemoveAll(cfg config.Config) error {
+	if s.removeAllFn != nil {
+		return s.removeAllFn(cfg)
+	}
+	return nil
+}
+
+func (s stubBackend) RunNow(id int) ([]byte, error) {
+	if s.runNowFn != nil {
+		return s.runNowFn(id)
+	}
+	return nil, nil
+}
+
+func (s stubBackend) ValidateManagedSchedule(expr string) error {
+	if s.validateManagedScheduleFn != nil {
+		return s.validateManagedScheduleFn(expr)
+	}
+	return nil
+}
 
 func TestNew(t *testing.T) {
 	cfg := config.DefaultConfig()
@@ -156,17 +224,16 @@ func TestViewForm_DoesNotShowMailtoField(t *testing.T) {
 }
 
 func TestLoadJobs_DoesNotUseDemoJobsForReadErrors(t *testing.T) {
-	oldReadCrontab := modelReadCrontabFn
-	oldGOOS := modelGOOS
-	defer func() {
-		modelReadCrontabFn = oldReadCrontab
-		modelGOOS = oldGOOS
-	}()
+	oldBackend := modelBackendFn
+	defer func() { modelBackendFn = oldBackend }()
 
-	modelReadCrontabFn = func() (string, error) {
-		return "", errors.New("permission denied")
+	modelBackendFn = func(config.Config) scheduler.Backend {
+		return stubBackend{
+			loadJobsFn: func() ([]types.CronJob, error) {
+				return nil, errors.New("permission denied")
+			},
+		}
 	}
-	modelGOOS = "linux"
 
 	m := New(config.DefaultConfig())
 	m.loadJobs()
@@ -182,31 +249,40 @@ func TestLoadJobs_DoesNotUseDemoJobsForReadErrors(t *testing.T) {
 	}
 }
 
-func TestLoadJobs_UsesDemoJobsOnWindowsOnly(t *testing.T) {
-	oldReadCrontab := modelReadCrontabFn
-	oldGOOS := modelGOOS
-	defer func() {
-		modelReadCrontabFn = oldReadCrontab
-		modelGOOS = oldGOOS
-	}()
+func TestLoadJobs_WindowsDoesNotUseDemoJobsWhenBackendErrors(t *testing.T) {
+	oldBackend := modelBackendFn
+	defer func() { modelBackendFn = oldBackend }()
 
-	modelReadCrontabFn = func() (string, error) {
-		return "", errors.New("crontab unavailable")
+	modelBackendFn = func(config.Config) scheduler.Backend {
+		return stubBackend{
+			loadJobsFn: func() ([]types.CronJob, error) {
+				return nil, errors.New("task scheduler unavailable")
+			},
+		}
 	}
-	modelGOOS = "windows"
 
 	m := New(config.DefaultConfig())
 	m.loadJobs()
 
-	if len(m.jobs) == 0 {
-		t.Fatal("expected demo jobs on Windows fallback")
+	if len(m.jobs) != 0 {
+		t.Fatalf("expected no demo jobs on backend error, got %#v", m.jobs)
 	}
 	if !m.statusIsError {
-		t.Fatal("expected statusIsError to remain true for Windows fallback")
+		t.Fatal("expected statusIsError to remain true")
+	}
+	if !strings.Contains(m.statusMessage, "task scheduler unavailable") {
+		t.Fatalf("statusMessage = %q, want backend error", m.statusMessage)
 	}
 }
 
 func TestUpdateFormPreview_RebootDescriptorShowsFriendlyMessage(t *testing.T) {
+	oldBackend := modelBackendFn
+	defer func() { modelBackendFn = oldBackend }()
+
+	modelBackendFn = func(config.Config) scheduler.Backend {
+		return stubBackend{}
+	}
+
 	m := New(config.DefaultConfig())
 	m.scheduleInput.SetValue("@reboot")
 
@@ -221,18 +297,20 @@ func TestUpdateFormPreview_RebootDescriptorShowsFriendlyMessage(t *testing.T) {
 }
 
 func TestUpdateBackup_RestoreKeepsSuccessStatus(t *testing.T) {
-	oldReadCrontab := modelReadCrontabFn
-	oldRestoreBackup := modelRestoreBackupFn
-	defer func() {
-		modelReadCrontabFn = oldReadCrontab
-		modelRestoreBackupFn = oldRestoreBackup
-	}()
+	oldBackend := modelBackendFn
+	defer func() { modelBackendFn = oldBackend }()
 
-	modelReadCrontabFn = func() (string, error) {
-		return "0 * * * * /bin/echo restored\n", nil
-	}
-	modelRestoreBackupFn = func(cfg config.Config, filename string) error {
-		return nil
+	modelBackendFn = func(config.Config) scheduler.Backend {
+		return stubBackend{
+			restoreBackupFn: func(cfg config.Config, filename string) error {
+				return nil
+			},
+			loadJobsFn: func() ([]types.CronJob, error) {
+				return []types.CronJob{
+					{ID: 1, Schedule: "0 * * * *", Command: "/bin/echo restored", Enabled: true},
+				}, nil
+			},
+		}
 	}
 
 	m := New(config.DefaultConfig())
@@ -364,6 +442,13 @@ func TestViewHelp_IncludesStableIDGuidance(t *testing.T) {
 }
 
 func TestUpdateFormPreview_UsesConfiguredShowNextRuns(t *testing.T) {
+	oldBackend := modelBackendFn
+	defer func() { modelBackendFn = oldBackend }()
+
+	modelBackendFn = func(config.Config) scheduler.Backend {
+		return stubBackend{}
+	}
+
 	cfg := config.DefaultConfig()
 	cfg.ShowNextRuns = 2
 
@@ -396,5 +481,112 @@ func TestViewBackup_UsesConfiguredDateFormat(t *testing.T) {
 	view := m.viewBackup()
 	if !strings.Contains(view, "2026/03/19 14:30") {
 		t.Fatalf("viewBackup should use configured date format:\n%s", view)
+	}
+}
+
+func TestWindowsLoadJobsUsesSchedulerBackend(t *testing.T) {
+	oldBackend := modelBackendFn
+	defer func() { modelBackendFn = oldBackend }()
+
+	modelBackendFn = func(config.Config) scheduler.Backend {
+		return stubBackend{
+			loadJobsFn: func() ([]types.CronJob, error) {
+				return []types.CronJob{
+					{ID: 7, Schedule: "0 9 * * 1-5", Command: `Write-Output "hello"`, Enabled: true},
+				}, nil
+			},
+		}
+	}
+
+	m := New(config.DefaultConfig())
+	m.loadJobs()
+
+	if len(m.jobs) != 1 || m.jobs[0].ID != 7 {
+		t.Fatalf("jobs = %#v, want backend-loaded job #7", m.jobs)
+	}
+	if m.statusMessage != "" {
+		t.Fatalf("statusMessage = %q, want empty on successful backend load", m.statusMessage)
+	}
+}
+
+func TestWindowsUpdateFormPreviewShowsBackendScheduleError(t *testing.T) {
+	oldBackend := modelBackendFn
+	defer func() { modelBackendFn = oldBackend }()
+
+	modelBackendFn = func(config.Config) scheduler.Backend {
+		return stubBackend{
+			validateManagedScheduleFn: func(expr string) error {
+				return errors.New("windows backend does not support @reboot without elevated Task Scheduler permissions")
+			},
+		}
+	}
+
+	m := New(config.DefaultConfig())
+	m.scheduleInput.SetValue("@reboot")
+	m.updateFormPreview()
+
+	if !strings.Contains(m.formError, "does not support @reboot") {
+		t.Fatalf("formError = %q, want backend validation error", m.formError)
+	}
+	if m.formPreview != "" {
+		t.Fatalf("formPreview = %q, want empty when backend rejects the schedule", m.formPreview)
+	}
+}
+
+func TestWindowsUpdateListRunUsesSchedulerBackend(t *testing.T) {
+	oldBackend := modelBackendFn
+	defer func() { modelBackendFn = oldBackend }()
+
+	modelBackendFn = func(config.Config) scheduler.Backend {
+		return stubBackend{
+			runNowFn: func(id int) ([]byte, error) {
+				return []byte("backend run output"), nil
+			},
+		}
+	}
+
+	m := New(config.DefaultConfig())
+	m.jobs = []types.CronJob{{ID: 4, Schedule: "0 9 * * 1-5", Command: `Write-Output "hello"`, Enabled: true}}
+
+	next, _ := m.updateList(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'x'}})
+	updated := next.(Model)
+
+	if updated.currentView != ViewRunOutput {
+		t.Fatalf("currentView = %v, want %v", updated.currentView, ViewRunOutput)
+	}
+	if !strings.Contains(updated.runOutput, "backend run output") {
+		t.Fatalf("runOutput = %q, want backend output", updated.runOutput)
+	}
+}
+
+func TestWindowsUpdateConfirmRemoveAllUsesSchedulerBackend(t *testing.T) {
+	oldBackend := modelBackendFn
+	defer func() { modelBackendFn = oldBackend }()
+
+	removed := false
+	modelBackendFn = func(config.Config) scheduler.Backend {
+		return stubBackend{
+			removeAllFn: func(config.Config) error {
+				removed = true
+				return nil
+			},
+		}
+	}
+
+	m := New(config.DefaultConfig())
+	m.currentView = ViewConfirmRemoveAll
+	m.jobs = []types.CronJob{{ID: 1}}
+
+	next, _ := m.updateConfirmRemoveAll(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'y'}})
+	updated := next.(Model)
+
+	if !removed {
+		t.Fatal("updateConfirmRemoveAll should call backend.RemoveAll")
+	}
+	if len(updated.jobs) != 0 {
+		t.Fatalf("jobs = %#v, want empty after remove-all", updated.jobs)
+	}
+	if updated.statusIsError {
+		t.Fatal("statusIsError = true, want false")
 	}
 }

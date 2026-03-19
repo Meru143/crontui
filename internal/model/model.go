@@ -1,22 +1,16 @@
 package model
 
 import (
-	"runtime"
-
 	"github.com/charmbracelet/bubbles/textinput"
 	tea "github.com/charmbracelet/bubbletea"
 
 	"github.com/meru143/crontui/internal/config"
-	"github.com/meru143/crontui/internal/crontab"
+	"github.com/meru143/crontui/internal/scheduler"
 	"github.com/meru143/crontui/pkg/types"
 )
 
 var (
-	modelReadCrontabFn   = crontab.ReadCrontab
-	modelListBackupsFn   = crontab.ListBackups
-	modelCreateBackupFn  = crontab.CreateBackup
-	modelRestoreBackupFn = crontab.RestoreBackup
-	modelGOOS            = runtime.GOOS
+	modelBackendFn = scheduler.DefaultBackend
 )
 
 // ViewType represents the current screen in the TUI.
@@ -202,28 +196,24 @@ func (m Model) View() string {
 	}
 }
 
-// loadJobs reads jobs from crontab.
+// loadJobs reads jobs from the active scheduler backend.
 func (m *Model) loadJobs() {
-	raw, err := modelReadCrontabFn()
+	jobs, err := modelBackendFn(m.cfg).LoadJobs()
 	if err != nil {
-		m.statusMessage = "Error reading crontab: " + err.Error()
+		m.statusMessage = "Error loading jobs: " + err.Error()
 		m.statusIsError = true
-		if modelGOOS == "windows" {
-			m.jobs = demoJobs()
-		} else {
-			m.jobs = nil
-		}
+		m.jobs = nil
 		return
 	}
 
-	if raw == "" {
+	if len(jobs) == 0 {
 		m.jobs = nil
-		m.statusMessage = "No crontab entries found"
+		m.statusMessage = "No scheduled entries found"
 		m.statusIsError = false
 		return
 	}
 
-	m.jobs = crontab.ParseCrontab(raw)
+	m.jobs = jobs
 	m.statusMessage = ""
 }
 
