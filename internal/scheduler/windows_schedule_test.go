@@ -6,28 +6,15 @@ import (
 	"github.com/meru143/crontui/pkg/types"
 )
 
-func TestBuildWindowsTaskSpec_Reboot(t *testing.T) {
-	spec, err := buildWindowsTaskSpec(`\CronTUI\`, types.CronJob{
+func TestBuildWindowsTaskSpec_RejectsRebootOnWindows(t *testing.T) {
+	_, err := buildWindowsTaskSpec(`\CronTUI\`, types.CronJob{
 		ID:       6,
 		Schedule: "@reboot",
 		Command:  "Write-Output hello",
 		Enabled:  true,
 	})
-	if err != nil {
-		t.Fatalf("buildWindowsTaskSpec returned error: %v", err)
-	}
-
-	if spec.TaskName != "job-6" {
-		t.Fatalf("TaskName = %q, want %q", spec.TaskName, "job-6")
-	}
-	if spec.Source != encodeTaskSource("@reboot") {
-		t.Fatalf("Source = %q, want %q", spec.Source, encodeTaskSource("@reboot"))
-	}
-	if len(spec.Triggers) != 1 {
-		t.Fatalf("trigger count = %d, want 1", len(spec.Triggers))
-	}
-	if spec.Triggers[0].Type != windowsTriggerStartup {
-		t.Fatalf("trigger type = %q, want %q", spec.Triggers[0].Type, windowsTriggerStartup)
+	if err == nil {
+		t.Fatal("buildWindowsTaskSpec(@reboot) should fail on Windows")
 	}
 }
 
@@ -126,6 +113,7 @@ func TestBuildWindowsTaskSpec_DescriptorsAndSupportedCron(t *testing.T) {
 
 func TestBuildWindowsTaskSpec_RejectsUnsupportedSchedules(t *testing.T) {
 	for _, schedule := range []string{
+		"@reboot",
 		"0 9 1 * 1",
 		"*/7 * * * *",
 		"0 9 1-5 * *",

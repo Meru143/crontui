@@ -12,7 +12,6 @@ import (
 type windowsTriggerType string
 
 const (
-	windowsTriggerStartup windowsTriggerType = "startup"
 	windowsTriggerDaily   windowsTriggerType = "daily"
 	windowsTriggerWeekly  windowsTriggerType = "weekly"
 	windowsTriggerMonthly windowsTriggerType = "monthly"
@@ -59,7 +58,7 @@ func buildWindowsTaskSpec(taskPath string, job types.CronJob) (windowsTaskSpec, 
 func translateWindowsSchedule(schedule string) (windowsTriggerSpec, error) {
 	switch schedule {
 	case "@reboot":
-		return windowsTriggerSpec{Type: windowsTriggerStartup}, nil
+		return windowsTriggerSpec{}, fmt.Errorf("windows backend does not support @reboot without elevated Task Scheduler permissions")
 	case "@hourly":
 		return windowsTriggerSpec{Type: windowsTriggerDaily, AtHour: 0, AtMinute: 0, EveryMinutes: 60}, nil
 	case "@daily":

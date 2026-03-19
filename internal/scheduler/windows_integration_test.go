@@ -6,9 +6,13 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
+	"reflect"
 	"strings"
 	"testing"
 	"time"
+
+	"github.com/meru143/crontui/internal/config"
+	"github.com/meru143/crontui/pkg/types"
 )
 
 func TestWindowsMetadataRoundTrip(t *testing.T) {
@@ -59,6 +63,61 @@ func TestWindowsMetadataRoundTrip(t *testing.T) {
 		if !strings.Contains(exported, want) {
 			t.Fatalf("exported XML missing %q\nfull xml:\n%s", want, exported)
 		}
+	}
+}
+
+func TestWindowsCRUDRoundTrip(t *testing.T) {
+	if os.Getenv("CRONTUI_WINDOWS_E2E") != "1" {
+		t.Skip("set CRONTUI_WINDOWS_E2E=1 to run Windows Task Scheduler integration tests")
+	}
+
+	cfg := config.DefaultConfig()
+	cfg.WindowsTaskPath = `\CronTUI-Test\`
+
+	backend := &windowsBackend{
+		cfg:    cfg,
+		runner: newPowerShellRunner(),
+	}
+
+	if err := backend.SaveJobs(cfg, nil); err != nil {
+		t.Fatalf("initial cleanup failed: %v", err)
+	}
+	defer func() {
+		if err := backend.SaveJobs(cfg, nil); err != nil {
+			t.Fatalf("final cleanup failed: %v", err)
+		}
+	}()
+
+	initial := []types.CronJob{
+		{ID: 1, Schedule: "0 9 * * 1-5", Command: `Write-Output "one"`, Description: "weekday", Enabled: true},
+		{ID: 3, Schedule: "0 0 1 * *", Command: `Write-Output "three"`, Description: "monthly", Enabled: false},
+	}
+	if err := backend.SaveJobs(cfg, initial); err != nil {
+		t.Fatalf("SaveJobs(initial) failed: %v", err)
+	}
+
+	loaded, err := backend.LoadJobs()
+	if err != nil {
+		t.Fatalf("LoadJobs(initial) failed: %v", err)
+	}
+	if !reflect.DeepEqual(loaded, initial) {
+		t.Fatalf("loaded initial jobs = %#v, want %#v", loaded, initial)
+	}
+
+	updated := []types.CronJob{
+		{ID: 1, Schedule: "30 2 * * *", Command: `Write-Output "updated"`, Description: "nightly", Enabled: true},
+		{ID: 2, Schedule: "0 0 1 1 *", Command: `Write-Output "two"`, Description: "yearly", Enabled: false},
+	}
+	if err := backend.SaveJobs(cfg, updated); err != nil {
+		t.Fatalf("SaveJobs(updated) failed: %v", err)
+	}
+
+	loaded, err = backend.LoadJobs()
+	if err != nil {
+		t.Fatalf("LoadJobs(updated) failed: %v", err)
+	}
+	if !reflect.DeepEqual(loaded, updated) {
+		t.Fatalf("loaded updated jobs = %#v, want %#v", loaded, updated)
 	}
 }
 
