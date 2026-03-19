@@ -104,7 +104,7 @@ func (m Model) viewBackup() string {
 		for i, backup := range m.backups {
 			sizeStr := formatBytes(backup.Size)
 			row := fmt.Sprintf("  %-*s %-*d %-*s %s",
-				30, backup.Created.Format("2006-01-02 15:04:05"),
+				30, backup.Created.Format(m.cfg.DateFormat),
 				8, backup.JobCount,
 				10, sizeStr,
 				backup.Filename,

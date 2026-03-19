@@ -107,7 +107,7 @@ func (m *Model) updateFormPreview() {
 		return
 	}
 
-	valid, runs, hr, errMsg := cron.Preview(schedule, 5)
+	valid, runs, hr, errMsg := cron.Preview(schedule, m.cfg.ShowNextRuns)
 	if !valid {
 		m.formError = errMsg
 		m.formPreview = ""

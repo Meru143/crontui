@@ -77,6 +77,23 @@ func TestFormatCrontab_NoAnnotationsWhenEmpty(t *testing.T) {
 	}
 }
 
+func TestFormatCrontab_EmitsManagedIDs(t *testing.T) {
+	jobs := []types.CronJob{
+		{ID: 7, Schedule: "0 * * * *", Command: "/usr/bin/noop", Enabled: true},
+		{ID: 11, Schedule: "@reboot", Command: "/usr/bin/startup", Enabled: true},
+	}
+
+	out := FormatCrontab(jobs)
+	for _, want := range []string{
+		"# crontui:id: 7",
+		"# crontui:id: 11",
+	} {
+		if !strings.Contains(out, want) {
+			t.Fatalf("output missing %q\nfull output:\n%s", want, out)
+		}
+	}
+}
+
 func TestFormatCrontab_EmptyJobs(t *testing.T) {
 	out := FormatCrontab(nil)
 	if !strings.Contains(out, "# Crontab managed by crontui") {

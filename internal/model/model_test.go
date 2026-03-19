@@ -4,6 +4,7 @@ import (
 	"errors"
 	"strings"
 	"testing"
+	"time"
 
 	tea "github.com/charmbracelet/bubbletea"
 
@@ -359,5 +360,41 @@ func TestViewHelp_IncludesStableIDGuidance(t *testing.T) {
 	}
 	if !strings.Contains(view, "Alt+6 reboot") {
 		t.Fatalf("viewHelp should include preset shortcuts:\n%s", view)
+	}
+}
+
+func TestUpdateFormPreview_UsesConfiguredShowNextRuns(t *testing.T) {
+	cfg := config.DefaultConfig()
+	cfg.ShowNextRuns = 2
+
+	m := New(cfg)
+	m.scheduleInput.SetValue("* * * * *")
+
+	m.updateFormPreview()
+
+	lines := strings.Split(strings.TrimSpace(m.formPreview), "\n")
+	if len(lines) != 2 {
+		t.Fatalf("preview line count = %d, want 2\npreview:\n%s", len(lines), m.formPreview)
+	}
+}
+
+func TestViewBackup_UsesConfiguredDateFormat(t *testing.T) {
+	cfg := config.DefaultConfig()
+	cfg.DateFormat = "2006/01/02 15:04"
+
+	m := New(cfg)
+	m.currentView = ViewBackupList
+	m.backups = []types.Backup{
+		{
+			Filename: "backup.bak",
+			Created:  time.Date(2026, 3, 19, 14, 30, 0, 0, time.UTC),
+			JobCount: 1,
+			Size:     128,
+		},
+	}
+
+	view := m.viewBackup()
+	if !strings.Contains(view, "2026/03/19 14:30") {
+		t.Fatalf("viewBackup should use configured date format:\n%s", view)
 	}
 }
