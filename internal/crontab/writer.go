@@ -127,9 +127,9 @@ func FormatCrontab(jobs []types.CronJob) string {
 	b.WriteString("# Do not edit the marker comments\n\n")
 
 	for _, job := range jobs {
-		b.WriteString(fmt.Sprintf("%s %d\n", managedIDPrefix, job.ID))
+		fmt.Fprintf(&b, "%s %d\n", managedIDPrefix, job.ID)
 		if job.Description != "" {
-			b.WriteString(fmt.Sprintf("# description: %s\n", job.Description))
+			fmt.Fprintf(&b, "# description: %s\n", job.Description)
 		}
 
 		line := fmt.Sprintf("%s %s", job.Schedule, job.Command)
