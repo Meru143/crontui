@@ -1,7 +1,6 @@
 package scheduler
 
 import (
-	"fmt"
 	"runtime"
 
 	"github.com/meru143/crontui/internal/config"
@@ -31,8 +30,4 @@ func NewBackend(goos string, cfg config.Config) Backend {
 // DefaultBackend selects the platform backend for the current runtime.
 func DefaultBackend(cfg config.Config) Backend {
 	return NewBackend(runtime.GOOS, cfg)
-}
-
-func errBackendNotImplemented(name string) error {
-	return fmt.Errorf("%s backend is not implemented yet", name)
 }

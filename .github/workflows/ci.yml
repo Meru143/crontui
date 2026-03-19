@@ -11,10 +11,17 @@ permissions:
 
 jobs:
   test:
-    runs-on: ubuntu-latest
+    runs-on: ${{ matrix.os }}
     strategy:
+      fail-fast: false
       matrix:
-        go-version: ["1.24", "1.25"]
+        include:
+          - os: ubuntu-latest
+            go-version: "1.24"
+          - os: ubuntu-latest
+            go-version: "1.25"
+          - os: windows-latest
+            go-version: "1.25"
     steps:
       - uses: actions/checkout@v4
 
@@ -22,11 +29,31 @@ jobs:
         with:
           go-version: ${{ matrix.go-version }}
 
-      - name: Build
+      - name: Build (Unix)
+        if: runner.os != 'Windows'
         run: make build
 
-      - name: Test
+      - name: Test (Unix)
+        if: runner.os != 'Windows'
         run: make test
+
+      - name: Build (Windows)
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: go build -o crontui.exe .
+
+      - name: Test (Windows)
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: go test ./... -v
+
+      - name: Windows smoke
+        if: runner.os == 'Windows'
+        shell: pwsh
+        env:
+          CRONTUI_WINDOWS_TASK_PATH: '\CronTUI-CI\'
+          CRONTUI_BACKUP_DIR: ${{ runner.temp }}\crontui-windows-smoke-backups
+        run: .\scripts\windows-smoke.ps1 -BinaryPath "$PWD\crontui.exe"
 
   lint:
     runs-on: ubuntu-latest

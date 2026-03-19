@@ -21,4 +21,18 @@ func TestCIWorkflowTargetsMasterBranch(t *testing.T) {
 	if count := strings.Count(workflow, "branches: [master]"); count != 2 {
 		t.Fatalf("expected ci workflow to target master for push and pull_request, found %d occurrences", count)
 	}
+
+	required := []string{
+		"ubuntu-latest",
+		"windows-latest",
+		"runner.os == 'Windows'",
+		"scripts\\windows-smoke.ps1",
+		"CRONTUI_WINDOWS_TASK_PATH",
+	}
+
+	for _, needle := range required {
+		if !strings.Contains(workflow, needle) {
+			t.Fatalf("ci workflow missing %q", needle)
+		}
+	}
 }
