@@ -3,6 +3,7 @@ package cli
 import (
 	"bytes"
 	"errors"
+	"io"
 	"reflect"
 	"testing"
 
@@ -12,6 +13,12 @@ import (
 
 type exitPanic struct {
 	code int
+}
+
+type errorWriter struct{}
+
+func (errorWriter) Write(p []byte) (int, error) {
+	return 0, io.ErrClosedPipe
 }
 
 type stubBackend struct {
@@ -296,6 +303,57 @@ func TestWindowsRunBackupAndRestoreUseSchedulerBackend(t *testing.T) {
 	}
 	if !bytes.Contains([]byte(restoreOutput), []byte("Restored from taskscheduler_20260319_120000.bak")) {
 		t.Fatalf("restore output = %q, want success text", restoreOutput)
+	}
+}
+
+func TestPrintHelp_ExitsWhenStdoutWriteFails(t *testing.T) {
+	oldStdout := stdout
+	oldExit := exitCLI
+	defer func() {
+		stdout = oldStdout
+		exitCLI = oldExit
+	}()
+
+	stdout = errorWriter{}
+	exitCLI = func(code int) {
+		panic(exitPanic{code: code})
+	}
+
+	code := captureExitCode(t, printHelp)
+	if code != 1 {
+		t.Fatalf("exit code = %d, want 1", code)
+	}
+}
+
+func TestRunList_ExitsWhenFlushFails(t *testing.T) {
+	oldStdout := stdout
+	oldExit := exitCLI
+	oldBackend := cliBackendFn
+	defer func() {
+		stdout = oldStdout
+		exitCLI = oldExit
+		cliBackendFn = oldBackend
+	}()
+
+	stdout = errorWriter{}
+	exitCLI = func(code int) {
+		panic(exitPanic{code: code})
+	}
+	cliBackendFn = func(config.Config) backend {
+		return stubBackend{
+			loadJobsFn: func() ([]types.CronJob, error) {
+				return []types.CronJob{
+					{ID: 1, Schedule: "@hourly", Command: "whoami", Description: "hourly identity", Enabled: true},
+				}, nil
+			},
+		}
+	}
+
+	code := captureExitCode(t, func() {
+		runList(config.DefaultConfig(), nil)
+	})
+	if code != 1 {
+		t.Fatalf("exit code = %d, want 1", code)
 	}
 }
 
