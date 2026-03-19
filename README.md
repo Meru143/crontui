@@ -10,6 +10,7 @@ A beautiful terminal UI for managing cron jobs, built with [Bubble Tea](https://
 - **Interactive TUI** — browse, add, edit, delete, and toggle cron jobs visually
 - **Live validation** — cron expressions are validated in real-time as you type
 - **Next-run preview** — see upcoming execution times before saving
+- **Stable managed IDs** — job IDs stay stable across deletes and rewrites
 - **Schedule presets** — quick-pick common schedules (hourly, daily, weekly, etc.)
 - **Search & filter** — find jobs by command or filter by enabled/disabled
 - **Backup & restore** — automatic backups before every write, with restore support
@@ -86,6 +87,29 @@ crontui version                       # Show version
 crontui help                          # Show help
 ```
 
+## Behavior Notes
+
+- CronTUI preserves non-job crontab content such as environment variable lines and unrelated comments.
+- Managed jobs get stable internal IDs so `delete`, `enable`, `disable`, and `run` keep pointing at the same jobs after other mutations.
+- `@reboot` is supported. It does not have a timestamped "next run"; CronTUI shows it as an on-reboot job instead.
+- Every mutating write creates a backup first. Restoring a backup also creates a pre-restore backup of the current crontab.
+- `runnow` / `run` executes the saved command immediately through `sh -c`, outside cron's normal schedule.
+- Disabled jobs cannot be executed through `runnow` / `run`.
+
+## Common Cron Examples
+
+```bash
+*/5 * * * *          # every 5 minutes
+0 * * * *            # every hour
+0 9 * * 1-5          # 9:00 on weekdays
+30 2 * * *           # 02:30 every day
+0 0 1 * *            # first day of every month
+0 0 1 1 *            # every January 1st
+@hourly              # hourly shortcut
+@daily               # daily shortcut
+@reboot              # run once on reboot
+```
+
 ## Keyboard Shortcuts
 
 ### List View
@@ -104,6 +128,7 @@ crontui help                          # Show help
 | `x` | Run selected job now |
 | `f` | Cycle filter (all → enabled → disabled) |
 | `b` | Open backup list |
+| `?` | Open help |
 | `R` | Remove all crontab entries |
 | `r` | Refresh job list |
 | `q` | Quit |
@@ -113,8 +138,9 @@ crontui help                          # Show help
 | Key | Action |
 |-----|--------|
 | `Tab` / `Shift+Tab` | Move between fields |
-| `1`–`6` | Apply schedule preset |
+| `Alt+1`–`Alt+6` | Apply schedule preset |
 | `Ctrl+S` | Save job |
+| `?` | Open help |
 | `Esc` | Cancel and return to list |
 
 ### Backup View
@@ -123,7 +149,14 @@ crontui help                          # Show help
 |-----|--------|
 | `↑` / `↓` | Navigate backups |
 | `Enter` | Restore selected backup |
+| `?` | Open help |
 | `Esc` | Return to list |
+
+### Help View
+
+| Key | Action |
+|-----|--------|
+| `Esc` / `Enter` / `q` / `?` | Return to previous screen |
 
 ## Project Structure
 
@@ -132,7 +165,7 @@ crontui/
 ├── main.go                  # Entry point: CLI dispatch or TUI launch
 ├── internal/
 │   ├── cli/cli.go           # CLI subcommand handler
-│   ├── config/config.go     # Configuration (Viper)
+│   ├── config/config.go     # Defaults + file/env config loading
 │   ├── cron/
 │   │   ├── validator.go     # Cron expression validation (robfig/cron)
 │   │   └── preview.go       # Next-run calculation & formatting
@@ -146,6 +179,7 @@ crontui/
 │   │   ├── list.go          # List view rendering & key handling
 │   │   ├── form.go          # Add/edit form view
 │   │   ├── backup.go        # Backup list view
+│   │   ├── help.go          # TUI help screen
 │   │   ├── run_remove.go    # Run output & remove-all confirmation
 │   │   └── helpers.go       # Utility functions
 │   └── styles/styles.go     # Lip Gloss styles & color palette
@@ -154,7 +188,58 @@ crontui/
 
 ## Configuration
 
-CronTUI stores backups in `~/.config/crontui/backups/` and currently uses built-in configuration defaults.
+CronTUI starts from built-in defaults, then merges:
+
+1. `~/.config/crontui/config.json` by default
+2. `CRONTUI_CONFIG=/path/to/config.json` if set
+3. `CRONTUI_...` environment variables as the final override
+
+Supported config keys:
+
+```json
+{
+  "max_backups": 10,
+  "show_next_runs": 5,
+  "backup_dir": "/home/user/.config/crontui/backups",
+  "log_level": "info",
+  "date_format": "2006-01-02 15:04:05"
+}
+```
+
+Supported environment variables:
+
+```bash
+CRONTUI_CONFIG
+CRONTUI_MAX_BACKUPS
+CRONTUI_SHOW_NEXT_RUNS
+CRONTUI_BACKUP_DIR
+CRONTUI_LOG_LEVEL
+CRONTUI_DATE_FORMAT
+```
+
+## Troubleshooting
+
+### `crontui` works on Windows but cannot manage jobs
+
+Use WSL2 or a real Unix system. Native Windows does not provide the Unix `crontab` command CronTUI manages.
+
+### `crontab` command not found
+
+Install cron for your environment first. On Ubuntu or WSL:
+
+```bash
+sudo apt update
+sudo apt install -y cron
+sudo service cron start
+```
+
+### `runnow` output differs from scheduled cron output
+
+`runnow` executes the saved command immediately through `sh -c`. A real cron run may still differ because cron supplies a different runtime environment.
+
+### Restoring a backup did not remove newer backup files
+
+Restore writes the selected crontab content back, but it also creates a fresh pre-restore backup so you can undo the restore if needed.
 
 ## License
 
