@@ -16,6 +16,32 @@ A beautiful terminal UI for managing cron jobs, built with [Bubble Tea](https://
 - **CLI mode** — every operation is also available as a non-interactive subcommand
 - **Export / Import** — export jobs as JSON or crontab format, import from JSON
 
+## Platform Support
+
+CronTUI manages real system crontabs on Unix-style cron environments:
+
+- Linux
+- macOS
+- WSL2 distributions such as Ubuntu
+
+CronTUI does **not** manage native Windows Task Scheduler jobs. Running the binary directly on Windows is useful for basic cron-expression tooling, but real crontab read/write operations require a Unix `crontab` command.
+
+### Best Way To Use On Windows
+
+Use CronTUI inside WSL2:
+
+```powershell
+wsl --install -d Ubuntu
+wsl
+sudo apt update
+sudo apt install -y cron golang
+sudo service cron start
+go install github.com/meru143/crontui@latest
+~/go/bin/crontui
+```
+
+Jobs created this way run inside the WSL/Linux environment, not in native Windows Task Scheduler.
+
 ## Installation
 
 ### From source
