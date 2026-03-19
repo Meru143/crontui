@@ -41,6 +41,10 @@ type Document struct {
 
 // ParseDocument parses a crontab into a lossless document model.
 func ParseDocument(raw string) (*Document, error) {
+	if raw == "" {
+		return &Document{}, nil
+	}
+
 	lines := strings.Split(raw, "\n")
 	doc := &Document{entries: make([]documentEntry, 0, len(lines))}
 	id := 1

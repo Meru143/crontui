@@ -15,6 +15,15 @@ var (
 	writeRawCrontabFn = WriteRawCrontab
 )
 
+// LoadDocument reads and parses the current crontab into a document.
+func LoadDocument() (*Document, error) {
+	raw, err := ReadCrontab()
+	if err != nil {
+		return nil, err
+	}
+	return ParseDocument(raw)
+}
+
 // WriteCrontab writes the given jobs back to the system crontab.
 // It creates a full crontab string from the jobs and pipes it to `crontab -`.
 func WriteCrontab(jobs []types.CronJob) error {
@@ -62,6 +71,18 @@ func WriteDocumentWithBackup(cfg config.Config, doc *Document) error {
 	return nil
 }
 
+// WriteJobsWithBackup replaces the editable jobs while preserving raw non-job lines.
+func WriteJobsWithBackup(cfg config.Config, jobs []types.CronJob) error {
+	doc, err := LoadDocument()
+	if err != nil {
+		return err
+	}
+	if err := doc.ReplaceJobs(jobs); err != nil {
+		return err
+	}
+	return WriteDocumentWithBackup(cfg, doc)
+}
+
 // RemoveCrontab removes the current user's crontab entirely (crontab -r).
 func RemoveCrontab() error {
 	if runtime.GOOS == "windows" {
@@ -72,6 +93,22 @@ func RemoveCrontab() error {
 	out, err := cmd.CombinedOutput()
 	if err != nil {
 		return fmt.Errorf("failed to remove crontab: %w (%s)", err, string(out))
+	}
+	return nil
+}
+
+// RemoveCrontabWithBackup backs up the current crontab before removing it entirely.
+func RemoveCrontabWithBackup(cfg config.Config) error {
+	if _, err := createBackupFn(cfg); err != nil {
+		return err
+	}
+	if err := RemoveCrontab(); err != nil {
+		return err
+	}
+	if cfg.MaxBackups > 0 {
+		if err := PruneBackups(cfg); err != nil {
+			return err
+		}
 	}
 	return nil
 }

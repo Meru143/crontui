@@ -44,7 +44,7 @@ func (m Model) viewRunOutput() string {
 func (m Model) updateConfirmRemoveAll(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	switch msg.String() {
 	case "y", "Y":
-		if err := crontab.RemoveCrontab(); err != nil {
+		if err := crontab.RemoveCrontabWithBackup(m.cfg); err != nil {
 			m.statusMessage = "Error removing crontab: " + err.Error()
 			m.statusIsError = true
 		} else {

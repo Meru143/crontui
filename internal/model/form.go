@@ -177,7 +177,7 @@ func (m Model) saveForm() (tea.Model, tea.Cmd) {
 	m.statusIsError = false
 
 	// Write to crontab
-	if err := crontab.WriteCrontab(m.jobs); err != nil {
+	if err := crontab.WriteJobsWithBackup(m.cfg, m.jobs); err != nil {
 		m.statusMessage = "Saved in memory but failed to write crontab: " + err.Error()
 		m.statusIsError = true
 	}

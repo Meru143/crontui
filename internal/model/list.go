@@ -90,7 +90,7 @@ func (m Model) updateList(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 					break
 				}
 			}
-			if err := crontab.WriteCrontab(m.jobs); err != nil {
+			if err := crontab.WriteJobsWithBackup(m.cfg, m.jobs); err != nil {
 				m.statusMessage = "Error: " + err.Error()
 				m.statusIsError = true
 			} else {
@@ -310,7 +310,7 @@ func (m Model) updateConfirmDelete(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 			}
 			m.jobs = newJobs
 
-			if err := crontab.WriteCrontab(m.jobs); err != nil {
+			if err := crontab.WriteJobsWithBackup(m.cfg, m.jobs); err != nil {
 				m.statusMessage = "Error deleting: " + err.Error()
 				m.statusIsError = true
 			} else {

@@ -84,13 +84,13 @@ func Run(args []string) bool {
 	case "list", "ls":
 		return runList(subArgs)
 	case "add":
-		return runAdd(subArgs)
+		return runAdd(cfg, subArgs)
 	case "delete", "rm":
-		return runDelete(subArgs)
+		return runDelete(cfg, subArgs)
 	case "enable":
-		return runToggle(subArgs, true)
+		return runToggle(cfg, subArgs, true)
 	case "disable":
-		return runToggle(subArgs, false)
+		return runToggle(cfg, subArgs, false)
 	case "validate":
 		return runValidate(subArgs)
 	case "preview":
@@ -102,7 +102,7 @@ func Run(args []string) bool {
 	case "export":
 		return runExport(subArgs)
 	case "import":
-		return runImport(subArgs)
+		return runImport(cfg, subArgs)
 	case "runnow", "run":
 		return runNow(subArgs)
 	case "completion", "--completion":
@@ -151,7 +151,7 @@ func runList(args []string) bool {
 	return true
 }
 
-func runAdd(args []string) bool {
+func runAdd(cfg config.Config, args []string) bool {
 	if len(args) < 2 {
 		fmt.Fprintf(os.Stderr, "Usage: crontui add <schedule> <command> [--desc \"description\"]\n")
 		os.Exit(1)
@@ -175,13 +175,13 @@ func runAdd(args []string) bool {
 		os.Exit(1)
 	}
 
-	raw, err := crontab.ReadCrontab()
+	doc, err := crontab.LoadDocument()
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Error reading crontab: %v\n", err)
 		os.Exit(1)
 	}
 
-	jobs := crontab.ParseCrontab(raw)
+	jobs := doc.Jobs()
 	maxID := 0
 	for _, j := range jobs {
 		if j.ID > maxID {
@@ -197,7 +197,12 @@ func runAdd(args []string) bool {
 		Enabled:     true,
 	})
 
-	if err := crontab.WriteCrontab(jobs); err != nil {
+	if err := doc.ReplaceJobs(jobs); err != nil {
+		fmt.Fprintf(os.Stderr, "Error updating crontab document: %v\n", err)
+		os.Exit(1)
+	}
+
+	if err := crontab.WriteDocumentWithBackup(cfg, doc); err != nil {
 		fmt.Fprintf(os.Stderr, "Error writing crontab: %v\n", err)
 		os.Exit(1)
 	}
@@ -206,7 +211,7 @@ func runAdd(args []string) bool {
 	return true
 }
 
-func runDelete(args []string) bool {
+func runDelete(cfg config.Config, args []string) bool {
 	if len(args) < 1 {
 		fmt.Fprintf(os.Stderr, "Usage: crontui delete <job-id>\n")
 		os.Exit(1)
@@ -218,13 +223,13 @@ func runDelete(args []string) bool {
 		os.Exit(1)
 	}
 
-	raw, err := crontab.ReadCrontab()
+	doc, err := crontab.LoadDocument()
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
 		os.Exit(1)
 	}
 
-	jobs := crontab.ParseCrontab(raw)
+	jobs := doc.Jobs()
 	found := false
 	newJobs := make([]types.CronJob, 0)
 	for _, j := range jobs {
@@ -240,7 +245,12 @@ func runDelete(args []string) bool {
 		os.Exit(1)
 	}
 
-	if err := crontab.WriteCrontab(newJobs); err != nil {
+	if err := doc.ReplaceJobs(newJobs); err != nil {
+		fmt.Fprintf(os.Stderr, "Error updating crontab document: %v\n", err)
+		os.Exit(1)
+	}
+
+	if err := crontab.WriteDocumentWithBackup(cfg, doc); err != nil {
 		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
 		os.Exit(1)
 	}
@@ -249,7 +259,7 @@ func runDelete(args []string) bool {
 	return true
 }
 
-func runToggle(args []string, enable bool) bool {
+func runToggle(cfg config.Config, args []string, enable bool) bool {
 	if len(args) < 1 {
 		action := "enable"
 		if !enable {
@@ -265,13 +275,13 @@ func runToggle(args []string, enable bool) bool {
 		os.Exit(1)
 	}
 
-	raw, err := crontab.ReadCrontab()
+	doc, err := crontab.LoadDocument()
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
 		os.Exit(1)
 	}
 
-	jobs := crontab.ParseCrontab(raw)
+	jobs := doc.Jobs()
 	found := false
 	for i := range jobs {
 		if jobs[i].ID == id {
@@ -286,7 +296,12 @@ func runToggle(args []string, enable bool) bool {
 		os.Exit(1)
 	}
 
-	if err := crontab.WriteCrontab(jobs); err != nil {
+	if err := doc.ReplaceJobs(jobs); err != nil {
+		fmt.Fprintf(os.Stderr, "Error updating crontab document: %v\n", err)
+		os.Exit(1)
+	}
+
+	if err := crontab.WriteDocumentWithBackup(cfg, doc); err != nil {
 		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
 		os.Exit(1)
 	}
@@ -402,7 +417,7 @@ func runExport(args []string) bool {
 	return true
 }
 
-func runImport(args []string) bool {
+func runImport(cfg config.Config, args []string) bool {
 	if len(args) < 1 {
 		fmt.Fprintf(os.Stderr, "Usage: crontui import <file.json>\n")
 		os.Exit(1)
@@ -420,7 +435,7 @@ func runImport(args []string) bool {
 		os.Exit(1)
 	}
 
-	if err := crontab.WriteCrontab(jobs); err != nil {
+	if err := crontab.WriteJobsWithBackup(cfg, jobs); err != nil {
 		fmt.Fprintf(os.Stderr, "Error writing crontab: %v\n", err)
 		os.Exit(1)
 	}

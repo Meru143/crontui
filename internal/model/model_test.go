@@ -1,6 +1,7 @@
 package model
 
 import (
+	"errors"
 	"strings"
 	"testing"
 
@@ -148,5 +149,56 @@ func TestViewForm_DoesNotShowMailtoField(t *testing.T) {
 	view := m.viewForm()
 	if strings.Contains(view, "Mailto") {
 		t.Fatalf("viewForm should not show mailto field:\n%s", view)
+	}
+}
+
+func TestLoadJobs_DoesNotUseDemoJobsForReadErrors(t *testing.T) {
+	oldReadCrontab := modelReadCrontabFn
+	oldGOOS := modelGOOS
+	defer func() {
+		modelReadCrontabFn = oldReadCrontab
+		modelGOOS = oldGOOS
+	}()
+
+	modelReadCrontabFn = func() (string, error) {
+		return "", errors.New("permission denied")
+	}
+	modelGOOS = "linux"
+
+	m := New(config.DefaultConfig())
+	m.loadJobs()
+
+	if len(m.jobs) != 0 {
+		t.Fatalf("expected no demo jobs on non-Windows read error, got %d jobs", len(m.jobs))
+	}
+	if !m.statusIsError {
+		t.Fatal("expected statusIsError to be true")
+	}
+	if !strings.Contains(m.statusMessage, "permission denied") {
+		t.Fatalf("statusMessage = %q, want permission error", m.statusMessage)
+	}
+}
+
+func TestLoadJobs_UsesDemoJobsOnWindowsOnly(t *testing.T) {
+	oldReadCrontab := modelReadCrontabFn
+	oldGOOS := modelGOOS
+	defer func() {
+		modelReadCrontabFn = oldReadCrontab
+		modelGOOS = oldGOOS
+	}()
+
+	modelReadCrontabFn = func() (string, error) {
+		return "", errors.New("crontab unavailable")
+	}
+	modelGOOS = "windows"
+
+	m := New(config.DefaultConfig())
+	m.loadJobs()
+
+	if len(m.jobs) == 0 {
+		t.Fatal("expected demo jobs on Windows fallback")
+	}
+	if !m.statusIsError {
+		t.Fatal("expected statusIsError to remain true for Windows fallback")
 	}
 }

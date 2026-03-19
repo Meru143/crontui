@@ -1,12 +1,19 @@
 package model
 
 import (
+	"runtime"
+
 	"github.com/charmbracelet/bubbles/textinput"
 	tea "github.com/charmbracelet/bubbletea"
 
 	"github.com/meru143/crontui/internal/config"
 	"github.com/meru143/crontui/internal/crontab"
 	"github.com/meru143/crontui/pkg/types"
+)
+
+var (
+	modelReadCrontabFn = crontab.ReadCrontab
+	modelGOOS          = runtime.GOOS
 )
 
 // ViewType represents the current screen in the TUI.
@@ -40,7 +47,7 @@ type Model struct {
 	searchQuery string
 	searchMode  bool
 
-	filter      string // "all", "enabled", "disabled"
+	filter string // "all", "enabled", "disabled"
 
 	// Form inputs
 	scheduleInput    textinput.Model
@@ -100,9 +107,9 @@ func New(cfg config.Config) Model {
 	mi.CharLimit = 128
 
 	return Model{
-		cfg:              cfg,
-		currentView:      ViewList,
-		filter:           "all",
+		cfg:         cfg,
+		currentView: ViewList,
+		filter:      "all",
 
 		scheduleInput:    si,
 		commandInput:     ci,
@@ -183,12 +190,15 @@ func (m Model) View() string {
 
 // loadJobs reads jobs from crontab.
 func (m *Model) loadJobs() {
-	raw, err := crontab.ReadCrontab()
+	raw, err := modelReadCrontabFn()
 	if err != nil {
 		m.statusMessage = "Error reading crontab: " + err.Error()
 		m.statusIsError = true
-		// Use demo jobs on Windows or when crontab fails
-		m.jobs = demoJobs()
+		if modelGOOS == "windows" {
+			m.jobs = demoJobs()
+		} else {
+			m.jobs = nil
+		}
 		return
 	}
 
