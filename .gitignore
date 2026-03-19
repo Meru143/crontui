@@ -40,6 +40,8 @@ skills-lock.json
 # Planning docs (not for repo)
 2026-02-26-crontui-prd.md
 2026-02-26-crontui-todo.md
+docs/
+.worktrees/
 
 # Go
 go.sum
