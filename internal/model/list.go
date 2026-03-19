@@ -187,7 +187,7 @@ func (m Model) viewList() string {
 	}
 
 	if len(jobs) == 0 {
-		b.WriteString(styles.HelpStyle.Render("  No cron jobs found. Press 'a' to add one.\n"))
+		b.WriteString(styles.HelpStyle.Render("  No cron jobs found. Press 'a' to add one or '?' for help.\n"))
 	} else {
 		// Table header
 		colID := 4
@@ -266,7 +266,7 @@ func (m Model) viewList() string {
 	// Help
 	help := []string{
 		"↑/↓ navigate", "a add", "e/↵ edit", "d delete", "t toggle",
-		"x run now", "/ search", "f filter", "b backups", "R remove all", "r refresh", "q quit",
+		"x run now", "/ search", "f filter", "b backups", "R remove all", "r refresh", "? help", "q quit",
 	}
 	b.WriteString(styles.HelpStyle.Render("  " + strings.Join(help, " │ ")))
 	b.WriteString("\n")

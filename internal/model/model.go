@@ -31,6 +31,7 @@ const (
 	ViewConfirmDelete
 	ViewSearch
 	ViewRunOutput
+	ViewHelp
 	ViewConfirmRemoveAll
 )
 
@@ -43,6 +44,7 @@ type Model struct {
 
 	// View state
 	currentView   ViewType
+	previousView  ViewType
 	selectedIndex int
 	editingJob    *types.CronJob
 
@@ -150,6 +152,12 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m, tea.Quit
 		}
 
+		if msg.String() == "?" && m.currentView != ViewHelp {
+			m.previousView = m.currentView
+			m.currentView = ViewHelp
+			return m, nil
+		}
+
 		// Route by view
 		switch m.currentView {
 		case ViewList:
@@ -166,6 +174,8 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m.updateSearch(msg)
 		case ViewRunOutput:
 			return m.updateRunOutput(msg)
+		case ViewHelp:
+			return m.updateHelp(msg)
 		}
 	}
 
@@ -185,6 +195,8 @@ func (m Model) View() string {
 		return m.viewConfirmRemoveAll()
 	case ViewRunOutput:
 		return m.viewRunOutput()
+	case ViewHelp:
+		return m.viewHelp()
 	default:
 		return m.viewList()
 	}

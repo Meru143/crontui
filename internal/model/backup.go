@@ -89,7 +89,7 @@ func (m Model) viewBackup() string {
 	b.WriteString(styles.HeaderStyle.Width(w).Render("🕐 CronTUI — Backups") + "\n\n")
 
 	if len(m.backups) == 0 {
-		b.WriteString(styles.HelpStyle.Render("  No backups found. Press 'c' to create one.\n"))
+		b.WriteString(styles.HelpStyle.Render("  No backups found. Press 'c' to create one or '?' for help.\n"))
 	} else {
 		// Header
 		headerRow := fmt.Sprintf("  %-*s %-*s %-*s %s",
@@ -130,7 +130,7 @@ func (m Model) viewBackup() string {
 		b.WriteString("\n")
 	}
 
-	b.WriteString(styles.HelpStyle.Render("  ↑/↓ navigate │ ↵/r restore │ c create │ esc back") + "\n")
+	b.WriteString(styles.HelpStyle.Render("  ↑/↓ navigate │ ↵/r restore │ c create │ ? help │ esc back") + "\n")
 
 	return b.String()
 }

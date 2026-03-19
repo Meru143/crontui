@@ -35,7 +35,7 @@ func (m Model) viewRunOutput() string {
 	}
 
 	b.WriteString("\n")
-	b.WriteString(styles.HelpStyle.Render("  Press Esc, Enter, or q to return") + "\n")
+	b.WriteString(styles.HelpStyle.Render("  Press Esc, Enter, q, or ? for help") + "\n")
 
 	return b.String()
 }

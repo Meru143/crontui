@@ -302,3 +302,62 @@ func TestUpdateForm_ScheduleAltDigitAppliesPreset(t *testing.T) {
 		t.Fatalf("scheduleInput.Value() = %q, want %q", got, "@reboot")
 	}
 }
+
+func TestUpdate_QuestionMarkOpensHelpAndReturnsToPreviousView(t *testing.T) {
+	m := New(config.DefaultConfig())
+	m.currentView = ViewFormAdd
+
+	next, _ := m.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'?'}})
+	updated, ok := next.(Model)
+	if !ok {
+		t.Fatalf("Update returned %T, want model.Model", next)
+	}
+
+	if updated.currentView != ViewHelp {
+		t.Fatalf("currentView = %v, want %v", updated.currentView, ViewHelp)
+	}
+	if updated.previousView != ViewFormAdd {
+		t.Fatalf("previousView = %v, want %v", updated.previousView, ViewFormAdd)
+	}
+
+	next, _ = updated.Update(tea.KeyMsg{Type: tea.KeyEsc})
+	restored, ok := next.(Model)
+	if !ok {
+		t.Fatalf("Update returned %T, want model.Model", next)
+	}
+	if restored.currentView != ViewFormAdd {
+		t.Fatalf("currentView after leaving help = %v, want %v", restored.currentView, ViewFormAdd)
+	}
+}
+
+func TestViewForm_ShowsPresetHelp(t *testing.T) {
+	m := New(config.DefaultConfig())
+	m.currentView = ViewFormAdd
+
+	view := m.viewForm()
+	if !strings.Contains(view, "Alt+1..Alt+6") {
+		t.Fatalf("viewForm should show preset help:\n%s", view)
+	}
+}
+
+func TestViewList_EmptyStateMentionsHelp(t *testing.T) {
+	m := New(config.DefaultConfig())
+	m.currentView = ViewList
+
+	view := m.viewList()
+	if !strings.Contains(view, "Press 'a' to add one or '?' for help.") {
+		t.Fatalf("viewList should mention help in empty state:\n%s", view)
+	}
+}
+
+func TestViewHelp_IncludesStableIDGuidance(t *testing.T) {
+	m := New(config.DefaultConfig())
+
+	view := m.viewHelp()
+	if !strings.Contains(view, "IDs are stable managed IDs") {
+		t.Fatalf("viewHelp should mention stable IDs:\n%s", view)
+	}
+	if !strings.Contains(view, "Alt+6 reboot") {
+		t.Fatalf("viewHelp should include preset shortcuts:\n%s", view)
+	}
+}

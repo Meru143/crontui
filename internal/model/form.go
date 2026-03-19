@@ -248,7 +248,7 @@ func (m Model) viewForm() string {
 	b.WriteString("  " + m.descriptionInput.View() + "\n\n")
 
 	// Help
-	b.WriteString(styles.HelpStyle.Render("  Tab cycle fields │ Ctrl+S save │ Esc cancel") + "\n")
+	b.WriteString(styles.HelpStyle.Render("  Tab cycle fields │ Alt+1..Alt+6 presets │ Ctrl+S save │ ? help │ Esc cancel") + "\n")
 
 	return b.String()
 }
