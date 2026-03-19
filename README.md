@@ -5,6 +5,12 @@ A beautiful terminal UI for managing cron jobs, built with [Bubble Tea](https://
 ![Go](https://img.shields.io/badge/Go-1.25+-00ADD8?logo=go&logoColor=white)
 ![License](https://img.shields.io/badge/License-MIT-green)
 
+## Demo
+
+![CronTUI native Windows CLI demo](media/demo/crontui-native-windows.gif)
+
+Short native Windows CLI flow: add a managed task, confirm it in Task Scheduler, and create a backup.
+
 ## Features
 
 - **Interactive TUI** — browse, add, edit, delete, and toggle cron jobs visually
