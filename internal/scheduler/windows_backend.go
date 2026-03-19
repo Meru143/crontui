@@ -7,6 +7,7 @@ import (
 	"encoding/xml"
 	"fmt"
 	"os"
+	"path/filepath"
 	"slices"
 	"strings"
 	"time"
@@ -100,24 +101,55 @@ func (b *windowsBackend) SaveJobs(cfg config.Config, jobs []types.CronJob) error
 	return nil
 }
 
-func (b *windowsBackend) CreateBackup(config.Config) (string, error) {
-	return "", errBackendNotImplemented("windows scheduler")
+func (b *windowsBackend) CreateBackup(cfg config.Config) (string, error) {
+	jobs, err := b.LoadJobs()
+	if err != nil {
+		return "", fmt.Errorf("failed to read Windows scheduled tasks for backup: %w", err)
+	}
+	return createWindowsBackup(cfg, jobs)
 }
 
-func (b *windowsBackend) ListBackups(config.Config) ([]types.Backup, error) {
-	return nil, errBackendNotImplemented("windows scheduler")
+func (b *windowsBackend) ListBackups(cfg config.Config) ([]types.Backup, error) {
+	return listWindowsBackups(cfg)
 }
 
-func (b *windowsBackend) RestoreBackup(config.Config, string) error {
-	return errBackendNotImplemented("windows scheduler")
+func (b *windowsBackend) RestoreBackup(cfg config.Config, filename string) error {
+	manifest, err := readWindowsBackupManifest(filepath.Join(cfg.BackupDir, filename))
+	if err != nil {
+		return err
+	}
+
+	if _, err := b.CreateBackup(cfg); err != nil {
+		return fmt.Errorf("failed to backup current tasks before restore: %w", err)
+	}
+
+	return b.SaveJobs(cfg, manifest.Jobs)
 }
 
-func (b *windowsBackend) RemoveAll(config.Config) error {
-	return errBackendNotImplemented("windows scheduler")
+func (b *windowsBackend) RemoveAll(cfg config.Config) error {
+	if _, err := b.CreateBackup(cfg); err != nil {
+		return err
+	}
+	return b.SaveJobs(cfg, nil)
 }
 
-func (b *windowsBackend) RunNow(int) ([]byte, error) {
-	return nil, errBackendNotImplemented("windows scheduler")
+func (b *windowsBackend) RunNow(id int) ([]byte, error) {
+	jobs, err := b.LoadJobs()
+	if err != nil {
+		return nil, err
+	}
+
+	for _, job := range jobs {
+		if job.ID != id {
+			continue
+		}
+		if !job.Enabled {
+			return nil, fmt.Errorf("job #%d is disabled", id)
+		}
+		return runImmediateCommand("windows", job.Command)
+	}
+
+	return nil, fmt.Errorf("job #%d not found", id)
 }
 
 func (b *windowsBackend) ValidateManagedSchedule(expr string) error {

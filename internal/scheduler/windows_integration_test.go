@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
+	"path/filepath"
 	"reflect"
 	"strings"
 	"testing"
@@ -118,6 +119,83 @@ func TestWindowsCRUDRoundTrip(t *testing.T) {
 	}
 	if !reflect.DeepEqual(loaded, updated) {
 		t.Fatalf("loaded updated jobs = %#v, want %#v", loaded, updated)
+	}
+}
+
+func TestWindowsBackupRunRestoreAndRemoveAll(t *testing.T) {
+	if os.Getenv("CRONTUI_WINDOWS_E2E") != "1" {
+		t.Skip("set CRONTUI_WINDOWS_E2E=1 to run Windows Task Scheduler integration tests")
+	}
+
+	cfg := config.DefaultConfig()
+	cfg.BackupDir = t.TempDir()
+	cfg.WindowsTaskPath = `\CronTUI-Test\`
+
+	backend := &windowsBackend{
+		cfg:    cfg,
+		runner: newPowerShellRunner(),
+	}
+
+	if err := backend.SaveJobs(cfg, nil); err != nil {
+		t.Fatalf("initial cleanup failed: %v", err)
+	}
+	defer func() {
+		if err := backend.SaveJobs(cfg, nil); err != nil {
+			t.Fatalf("final cleanup failed: %v", err)
+		}
+	}()
+
+	initial := []types.CronJob{
+		{ID: 1, Schedule: "30 2 * * *", Command: `Write-Output "integration-run"`, Description: "integration", Enabled: true},
+	}
+	if err := backend.SaveJobs(cfg, initial); err != nil {
+		t.Fatalf("SaveJobs(initial) failed: %v", err)
+	}
+
+	out, err := backend.RunNow(1)
+	if err != nil {
+		t.Fatalf("RunNow failed: %v", err)
+	}
+	if !strings.Contains(string(out), "integration-run") {
+		t.Fatalf("RunNow output = %q, want integration-run", string(out))
+	}
+
+	backupPath, err := backend.CreateBackup(cfg)
+	if err != nil {
+		t.Fatalf("CreateBackup failed: %v", err)
+	}
+	if _, err := os.Stat(backupPath); err != nil {
+		t.Fatalf("backup file %q missing: %v", backupPath, err)
+	}
+
+	backups, err := backend.ListBackups(cfg)
+	if err != nil {
+		t.Fatalf("ListBackups failed: %v", err)
+	}
+	if len(backups) != 1 || backups[0].JobCount != 1 {
+		t.Fatalf("backups = %#v, want one backup with one job", backups)
+	}
+
+	if err := backend.RemoveAll(cfg); err != nil {
+		t.Fatalf("RemoveAll failed: %v", err)
+	}
+	loaded, err := backend.LoadJobs()
+	if err != nil {
+		t.Fatalf("LoadJobs(after RemoveAll) failed: %v", err)
+	}
+	if len(loaded) != 0 {
+		t.Fatalf("LoadJobs(after RemoveAll) = %#v, want empty", loaded)
+	}
+
+	if err := backend.RestoreBackup(cfg, filepath.Base(backupPath)); err != nil {
+		t.Fatalf("RestoreBackup failed: %v", err)
+	}
+	loaded, err = backend.LoadJobs()
+	if err != nil {
+		t.Fatalf("LoadJobs(after RestoreBackup) failed: %v", err)
+	}
+	if !reflect.DeepEqual(loaded, initial) {
+		t.Fatalf("LoadJobs(after RestoreBackup) = %#v, want %#v", loaded, initial)
 	}
 }
 
