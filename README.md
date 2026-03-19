@@ -128,7 +128,7 @@ crontui/
 
 ## Configuration
 
-CronTUI stores backups in `~/.config/crontui/backups/`. The default configuration can be customized via environment variables with the `CRONTUI_` prefix.
+CronTUI stores backups in `~/.config/crontui/backups/` and currently uses built-in configuration defaults.
 
 ## License
 
