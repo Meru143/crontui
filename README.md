@@ -19,17 +19,32 @@ A beautiful terminal UI for managing cron jobs, built with [Bubble Tea](https://
 
 ## Platform Support
 
-CronTUI manages real system crontabs on Unix-style cron environments:
+CronTUI manages real schedules on:
 
-- Linux
-- macOS
-- WSL2 distributions such as Ubuntu
+- Linux via the system `crontab`
+- macOS via the system `crontab`
+- WSL2 distributions such as Ubuntu via the distro's `crontab`
+- Native Windows via Windows Task Scheduler for CronTUI-managed tasks
 
-CronTUI does **not** manage native Windows Task Scheduler jobs. Running the binary directly on Windows is useful for basic cron-expression tooling, but real crontab read/write operations require a Unix `crontab` command.
+### Native Windows Behavior
+
+On native Windows, CronTUI manages only the tasks it owns inside a dedicated Task Scheduler folder:
+
+- default path: `\CronTUI\`
+- configurable via `windows_task_path` or `CRONTUI_WINDOWS_TASK_PATH`
+- stable IDs are stored in task names like `job-42`
+- backups are JSON manifests of the logical CronTUI job set, not raw Task Scheduler XML dumps
+
+CronTUI does not attempt to import or edit arbitrary existing Task Scheduler jobs outside that folder.
 
 ### Best Way To Use On Windows
 
-Use CronTUI inside WSL2:
+Choose the environment based on the semantics you need:
+
+- Use native Windows when you want CronTUI to manage Task Scheduler jobs under `\CronTUI\`.
+- Use WSL2 when you want full Unix cron behavior, especially cron-only semantics such as `@reboot`.
+
+For WSL2:
 
 ```powershell
 wsl --install -d Ubuntu
@@ -107,9 +122,13 @@ crontui help                          # Show help
 
 - CronTUI preserves non-job crontab content such as environment variable lines and unrelated comments.
 - Managed jobs get stable internal IDs so `delete`, `enable`, `disable`, and `run` keep pointing at the same jobs after other mutations.
-- `@reboot` is supported. It does not have a timestamped "next run"; CronTUI shows it as an on-reboot job instead.
-- Every mutating write creates a backup first. Restoring a backup also creates a pre-restore backup of the current crontab.
-- `runnow` / `run` executes the saved command immediately through `sh -c`, outside cron's normal schedule.
+- Native Windows manages only CronTUI-owned tasks under the configured Task Scheduler path; Unix and WSL continue to manage the user's real crontab.
+- Windows accepts only the cron subset that maps exactly to Task Scheduler. Unsupported expressions fail before save or import instead of being approximated silently.
+- `@reboot` is supported on Unix and WSL cron backends, but it is rejected on native Windows because non-admin Task Scheduler startup triggers are not reliably available per user.
+- Every mutating write creates a backup first. Restoring a backup also creates a pre-restore backup of the current managed job set.
+- `runnow` / `run` executes the saved command immediately outside the normal schedule:
+  - Unix / WSL: through `sh -c`
+  - native Windows: through `powershell.exe -NoProfile -NonInteractive -Command`
 - Disabled jobs cannot be executed through `runnow` / `run`.
 
 ## Common Cron Examples
@@ -145,7 +164,7 @@ crontui help                          # Show help
 | `f` | Cycle filter (all → enabled → disabled) |
 | `b` | Open backup list |
 | `?` | Open help |
-| `R` | Remove all crontab entries |
+| `R` | Remove all managed jobs |
 | `r` | Refresh job list |
 | `q` | Quit |
 
@@ -190,6 +209,7 @@ crontui/
 │   │   ├── writer.go        # Write system crontab
 │   │   ├── parser.go        # Parse crontab lines into CronJob structs
 │   │   └── backup.go        # Backup create/restore/prune/list
+│   ├── scheduler/           # Unix crontab and Windows Task Scheduler backends
 │   ├── model/
 │   │   ├── model.go         # Bubble Tea model (Init/Update/View)
 │   │   ├── list.go          # List view rendering & key handling
@@ -218,7 +238,8 @@ Supported config keys:
   "show_next_runs": 5,
   "backup_dir": "/home/user/.config/crontui/backups",
   "log_level": "info",
-  "date_format": "2006-01-02 15:04:05"
+  "date_format": "2006-01-02 15:04:05",
+  "windows_task_path": "\\\\CronTUI\\\\"
 }
 ```
 
@@ -231,6 +252,7 @@ CRONTUI_SHOW_NEXT_RUNS
 CRONTUI_BACKUP_DIR
 CRONTUI_LOG_LEVEL
 CRONTUI_DATE_FORMAT
+CRONTUI_WINDOWS_TASK_PATH
 ```
 
 ## Release Process
@@ -247,9 +269,36 @@ The manual tag workflow is defined in [.github/workflows/manual-release.yml](C:/
 
 ## Troubleshooting
 
-### `crontui` works on Windows but cannot manage jobs
+### Windows says a schedule is valid cron but unsupported
 
-Use WSL2 or a real Unix system. Native Windows does not provide the Unix `crontab` command CronTUI manages.
+Native Windows only accepts the schedule subset that maps exactly to Task Scheduler. Examples that are intentionally rejected include:
+
+- `@reboot`
+- mixed day-of-month and day-of-week expressions such as `0 9 1 * 1`
+- minute intervals that Task Scheduler cannot represent exactly, such as `*/7 * * * *`
+
+Use WSL2 if you need full Unix cron semantics.
+
+### Where did CronTUI create my Windows tasks?
+
+By default, native Windows tasks live under `\CronTUI\` in Task Scheduler.
+
+Inspect them directly with PowerShell:
+
+```powershell
+Get-ScheduledTask -TaskPath '\CronTUI\'
+```
+
+If you changed `windows_task_path`, use that path instead.
+
+### How do I remove orphaned Windows test tasks safely?
+
+```powershell
+Get-ScheduledTask -TaskPath '\CronTUI\' |
+  Unregister-ScheduledTask -Confirm:$false
+```
+
+Replace `\CronTUI\` with your configured task path if needed.
 
 ### `crontab` command not found
 
@@ -261,9 +310,9 @@ sudo apt install -y cron
 sudo service cron start
 ```
 
-### `runnow` output differs from scheduled cron output
+### `runnow` output differs from the scheduled run
 
-`runnow` executes the saved command immediately through `sh -c`. A real cron run may still differ because cron supplies a different runtime environment.
+`runnow` executes the saved command immediately through `sh -c` on Unix/WSL or PowerShell on native Windows. A real scheduled run may still differ because the scheduler supplies a different runtime environment.
 
 ### Restoring a backup did not remove newer backup files
 

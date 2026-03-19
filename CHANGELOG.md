@@ -7,6 +7,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- Native Windows Task Scheduler support for CronTUI-managed jobs under a dedicated task path such as `\CronTUI\`.
+- Windows backup, restore, remove-all, and direct `run` / `runnow` support through the scheduler backend.
+- Windows CI coverage and a reusable `scripts/windows-smoke.ps1` smoke script for real Task Scheduler verification.
+
+### Changed
+- Route the CLI and TUI through a shared scheduler facade so Unix continues to use crontab while Windows uses Task Scheduler.
+- Update platform documentation to describe native Windows support, the managed task-path model, and Windows-specific troubleshooting.
+
+### Fixed
+- Reject `@reboot` explicitly on native Windows instead of pretending it can be represented safely through Task Scheduler.
+
 ## [1.1.1] - 2026-03-19
 
 ### Fixed
