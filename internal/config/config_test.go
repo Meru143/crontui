@@ -21,6 +21,9 @@ func TestDefaultConfig(t *testing.T) {
 	if cfg.DateFormat != "2006-01-02 15:04:05" {
 		t.Errorf("DateFormat = %q, want %q", cfg.DateFormat, "2006-01-02 15:04:05")
 	}
+	if cfg.WindowsTaskPath != `\CronTUI\` {
+		t.Errorf("WindowsTaskPath = %q, want %q", cfg.WindowsTaskPath, `\CronTUI\`)
+	}
 	if cfg.BackupDir == "" {
 		t.Error("BackupDir should not be empty")
 	}
@@ -80,13 +83,14 @@ func TestLoad_FromConfigFile(t *testing.T) {
 func TestLoad_EnvOverridesConfigFile(t *testing.T) {
 	dir := t.TempDir()
 	configPath := filepath.Join(dir, "config.json")
-	if err := os.WriteFile(configPath, []byte(`{"max_backups": 3, "log_level": "warn"}`), 0o644); err != nil {
+	if err := os.WriteFile(configPath, []byte(`{"max_backups": 3, "log_level": "warn", "windows_task_path": "\\CrontUI-Config\\"}`), 0o644); err != nil {
 		t.Fatalf("write config file: %v", err)
 	}
 
 	t.Setenv("CRONTUI_CONFIG", configPath)
 	t.Setenv("CRONTUI_MAX_BACKUPS", "12")
 	t.Setenv("CRONTUI_BACKUP_DIR", "/var/lib/crontui/backups")
+	t.Setenv("CRONTUI_WINDOWS_TASK_PATH", `\CronTUI-Env\`)
 
 	cfg, err := Load()
 	if err != nil {
@@ -101,6 +105,28 @@ func TestLoad_EnvOverridesConfigFile(t *testing.T) {
 	}
 	if cfg.LogLevel != "warn" {
 		t.Fatalf("LogLevel = %q, want %q", cfg.LogLevel, "warn")
+	}
+	if cfg.WindowsTaskPath != `\CronTUI-Env\` {
+		t.Fatalf("WindowsTaskPath = %q, want %q", cfg.WindowsTaskPath, `\CronTUI-Env\`)
+	}
+}
+
+func TestLoad_WindowsTaskPathFromConfigFile(t *testing.T) {
+	dir := t.TempDir()
+	configPath := filepath.Join(dir, "config.json")
+	if err := os.WriteFile(configPath, []byte(`{"windows_task_path": "\\CronTUI-Test\\"}`), 0o644); err != nil {
+		t.Fatalf("write config file: %v", err)
+	}
+
+	t.Setenv("CRONTUI_CONFIG", configPath)
+
+	cfg, err := Load()
+	if err != nil {
+		t.Fatalf("Load returned error: %v", err)
+	}
+
+	if cfg.WindowsTaskPath != `\CronTUI-Test\` {
+		t.Fatalf("WindowsTaskPath = %q, want %q", cfg.WindowsTaskPath, `\CronTUI-Test\`)
 	}
 }
 

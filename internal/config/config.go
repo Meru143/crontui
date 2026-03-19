@@ -10,29 +10,32 @@ import (
 
 // Config holds application configuration.
 type Config struct {
-	MaxBackups   int    `json:"max_backups" mapstructure:"max_backups"`
-	ShowNextRuns int    `json:"show_next_runs" mapstructure:"show_next_runs"`
-	BackupDir    string `json:"backup_dir" mapstructure:"backup_dir"`
-	LogLevel     string `json:"log_level" mapstructure:"log_level"`
-	DateFormat   string `json:"date_format" mapstructure:"date_format"`
+	MaxBackups      int    `json:"max_backups" mapstructure:"max_backups"`
+	ShowNextRuns    int    `json:"show_next_runs" mapstructure:"show_next_runs"`
+	BackupDir       string `json:"backup_dir" mapstructure:"backup_dir"`
+	LogLevel        string `json:"log_level" mapstructure:"log_level"`
+	DateFormat      string `json:"date_format" mapstructure:"date_format"`
+	WindowsTaskPath string `json:"windows_task_path" mapstructure:"windows_task_path"`
 }
 
 type configOverrides struct {
-	MaxBackups   *int    `json:"max_backups"`
-	ShowNextRuns *int    `json:"show_next_runs"`
-	BackupDir    *string `json:"backup_dir"`
-	LogLevel     *string `json:"log_level"`
-	DateFormat   *string `json:"date_format"`
+	MaxBackups      *int    `json:"max_backups"`
+	ShowNextRuns    *int    `json:"show_next_runs"`
+	BackupDir       *string `json:"backup_dir"`
+	LogLevel        *string `json:"log_level"`
+	DateFormat      *string `json:"date_format"`
+	WindowsTaskPath *string `json:"windows_task_path"`
 }
 
 // DefaultConfig returns sensible defaults.
 func DefaultConfig() Config {
 	return Config{
-		MaxBackups:   10,
-		ShowNextRuns: 5,
-		BackupDir:    defaultBackupDir(),
-		LogLevel:     "info",
-		DateFormat:   "2006-01-02 15:04:05",
+		MaxBackups:      10,
+		ShowNextRuns:    5,
+		BackupDir:       defaultBackupDir(),
+		LogLevel:        "info",
+		DateFormat:      "2006-01-02 15:04:05",
+		WindowsTaskPath: `\CronTUI\`,
 	}
 }
 
@@ -121,6 +124,7 @@ func applyEnvOverrides(cfg *Config) error {
 		{env: "CRONTUI_BACKUP_DIR", dst: &cfg.BackupDir},
 		{env: "CRONTUI_LOG_LEVEL", dst: &cfg.LogLevel},
 		{env: "CRONTUI_DATE_FORMAT", dst: &cfg.DateFormat},
+		{env: "CRONTUI_WINDOWS_TASK_PATH", dst: &cfg.WindowsTaskPath},
 	}
 
 	for _, override := range stringOverrides {
@@ -150,6 +154,9 @@ func applyOverrides(cfg *Config, overrides configOverrides) {
 	if overrides.DateFormat != nil {
 		cfg.DateFormat = *overrides.DateFormat
 	}
+	if overrides.WindowsTaskPath != nil {
+		cfg.WindowsTaskPath = *overrides.WindowsTaskPath
+	}
 }
 
 func validate(cfg Config) error {
@@ -164,6 +171,8 @@ func validate(cfg Config) error {
 		return fmt.Errorf("log_level must not be empty")
 	case cfg.DateFormat == "":
 		return fmt.Errorf("date_format must not be empty")
+	case cfg.WindowsTaskPath == "":
+		return fmt.Errorf("windows_task_path must not be empty")
 	default:
 		return nil
 	}
