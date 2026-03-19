@@ -7,6 +7,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.2.2] - 2026-03-19
+
+### Added
+- A Linux / WSL terminal demo GIF for the README and GitHub releases, alongside the existing native Windows demo.
+
+### Changed
+- Make Linux / WSL the primary README demo while keeping native Windows as a secondary platform-specific demo.
+- Upgrade GitHub Actions workflow dependencies to current major versions, including `actions/checkout@v6`, `actions/setup-go@v6`, `golangci-lint-action@v9`, and `goreleaser-action@v7`.
+- Automatically upload committed demo GIFs from `media/demo/` to each tagged GitHub release.
+- Document automatic demo-asset publishing in the maintainer release instructions.
+
 ## [1.2.1] - 2026-03-19
 
 ### Changed
