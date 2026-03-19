@@ -44,12 +44,12 @@ func (m Model) updateConfirmRemoveAll(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	switch msg.String() {
 	case "y", "Y":
 		if err := modelBackendFn(m.cfg).RemoveAll(m.cfg); err != nil {
-			m.statusMessage = "Error removing crontab: " + err.Error()
+			m.statusMessage = "Error removing managed jobs: " + err.Error()
 			m.statusIsError = true
 		} else {
 			m.jobs = nil
 			m.selectedIndex = 0
-			m.statusMessage = "All crontab entries removed"
+			m.statusMessage = "All managed jobs removed"
 			m.statusIsError = false
 		}
 		m.currentView = ViewList

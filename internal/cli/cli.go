@@ -545,8 +545,8 @@ Commands:
   validate <expr>      Validate a cron expression
   preview <expr> [n]   Show next N runs for expression
   runnow, run <id>     Execute a cron job immediately
-  backup               Create a crontab backup
-  restore <file>       Restore crontab from backup
+  backup               Create a managed jobs backup
+  restore <file>       Restore jobs from backup
   export [--format=X]  Export jobs as json or crontab format
   import <file.json>   Import jobs from JSON file
   completion [shell]   Generate shell completions (bash, zsh, fish)

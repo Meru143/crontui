@@ -45,6 +45,7 @@ func (m Model) viewHelp() string {
 		"",
 		"  Notes",
 		"    IDs are stable managed IDs and do not renumber after deletes.",
+		"    Native Windows manages tasks only inside the configured Task Scheduler path.",
 		"    Press ? again, Esc, Enter, or q to return.",
 	}
 

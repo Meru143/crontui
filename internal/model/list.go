@@ -146,9 +146,9 @@ func (m Model) updateList(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		}
 
 	case "R":
-		// Remove all crontab
+		// Remove all managed jobs
 		m.currentView = ViewConfirmRemoveAll
-		m.confirmMessage = "Remove ALL crontab entries? This cannot be undone!"
+		m.confirmMessage = "Remove ALL managed jobs? This cannot be undone!"
 	}
 
 	return m, nil
