@@ -72,7 +72,6 @@ type Model struct {
 
 	// Confirm dialog
 	confirmMessage string
-	confirmAction  func() tea.Msg
 }
 
 // reloadMsg signals that we should reload jobs from crontab.

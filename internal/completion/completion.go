@@ -1,14 +1,6 @@
 // Package completion generates shell completion scripts for bash, zsh, and fish.
 package completion
 
-import "fmt"
-
-var commands = []string{
-	"list", "ls", "add", "delete", "rm", "enable", "disable",
-	"validate", "preview", "runnow", "run", "backup", "restore",
-	"export", "import", "help", "version",
-}
-
 // Bash returns a bash completion script for crontui.
 func Bash() string {
 	return `_crontui() {
@@ -22,7 +14,7 @@ complete -F _crontui crontui
 
 // Zsh returns a zsh completion script for crontui.
 func Zsh() string {
-	return fmt.Sprintf(`#compdef crontui
+	return `#compdef crontui
 
 _crontui() {
     local -a commands
@@ -49,7 +41,7 @@ _crontui() {
 }
 
 _crontui "$@"
-`)
+`
 }
 
 // Fish returns a fish completion script for crontui.

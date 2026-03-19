@@ -68,9 +68,15 @@ func TestListBackups_IgnoresNonBakFiles(t *testing.T) {
 	tmp := t.TempDir()
 	cfg := config.Config{BackupDir: tmp, MaxBackups: 10}
 
-	os.WriteFile(filepath.Join(tmp, "crontab_20250101_000000.bak"), []byte("0 * * * * cmd\n"), 0o644)
-	os.WriteFile(filepath.Join(tmp, "notes.txt"), []byte("not a backup"), 0o644)
-	os.MkdirAll(filepath.Join(tmp, "subdir"), 0o755)
+	if err := os.WriteFile(filepath.Join(tmp, "crontab_20250101_000000.bak"), []byte("0 * * * * cmd\n"), 0o644); err != nil {
+		t.Fatalf("write backup: %v", err)
+	}
+	if err := os.WriteFile(filepath.Join(tmp, "notes.txt"), []byte("not a backup"), 0o644); err != nil {
+		t.Fatalf("write note: %v", err)
+	}
+	if err := os.MkdirAll(filepath.Join(tmp, "subdir"), 0o755); err != nil {
+		t.Fatalf("mkdir subdir: %v", err)
+	}
 
 	backups, err := ListBackups(cfg)
 	if err != nil {
@@ -88,7 +94,9 @@ func TestPruneBackups(t *testing.T) {
 	// Create 4 backup files
 	for i := 0; i < 4; i++ {
 		name := fmt.Sprintf("crontab_2025010%d_000000.bak", i)
-		os.WriteFile(filepath.Join(tmp, name), []byte("0 * * * * /cmd\n"), 0o644)
+		if err := os.WriteFile(filepath.Join(tmp, name), []byte("0 * * * * /cmd\n"), 0o644); err != nil {
+			t.Fatalf("write backup %s: %v", name, err)
+		}
 	}
 
 	err := PruneBackups(cfg)
@@ -106,7 +114,9 @@ func TestPruneBackups_NoopWhenUnderLimit(t *testing.T) {
 	tmp := t.TempDir()
 	cfg := config.Config{BackupDir: tmp, MaxBackups: 10}
 
-	os.WriteFile(filepath.Join(tmp, "crontab_20250101_000000.bak"), []byte("0 * * * * cmd\n"), 0o644)
+	if err := os.WriteFile(filepath.Join(tmp, "crontab_20250101_000000.bak"), []byte("0 * * * * cmd\n"), 0o644); err != nil {
+		t.Fatalf("write backup: %v", err)
+	}
 
 	err := PruneBackups(cfg)
 	if err != nil {
