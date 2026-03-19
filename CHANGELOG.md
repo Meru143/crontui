@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.2.1] - 2026-03-19
+
+### Changed
+- Move repository guardrail checks for CI workflows, GoReleaser config, and the Windows smoke script into a dedicated `test/guardrails` package.
+
+### Fixed
+- Resolve the current Windows scheduled-task user more robustly so cross-platform CI and tests do not fail when `USERNAME` is unset.
+- Make the Windows smoke script exit cleanly after expected validation failures so successful GitHub Actions smoke runs do not report false negatives.
+- Sort and prune crontab backups by the timestamp encoded in backup filenames so backup retention stays deterministic across Unix runners and filesystems.
+
 ## [1.2.0] - 2026-03-19
 
 ### Added
