@@ -142,6 +142,14 @@ func TestNextRuns_InvalidExpr(t *testing.T) {
 	}
 }
 
+func TestNextRuns_RejectsNonPositiveCount(t *testing.T) {
+	for _, n := range []int{0, -1} {
+		if _, err := NextRuns("* * * * *", n); err == nil {
+			t.Fatalf("NextRuns should reject count %d", n)
+		}
+	}
+}
+
 func TestNextRuns_Ascending(t *testing.T) {
 	runs, err := NextRuns("* * * * *", 5)
 	if err != nil {

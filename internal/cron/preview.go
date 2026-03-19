@@ -8,6 +8,10 @@ import (
 
 // NextRuns returns the next n run times for a cron expression.
 func NextRuns(expr string, n int) ([]time.Time, error) {
+	if n <= 0 {
+		return nil, fmt.Errorf("count must be greater than 0")
+	}
+
 	sched, err := parser.Parse(expr)
 	if err != nil {
 		return nil, fmt.Errorf("invalid cron expression: %w", err)

@@ -21,35 +21,62 @@ import (
 // Debug controls verbose logging output.
 var Debug bool
 
+func parseInvocation(args []string) (cmd string, subArgs []string, debug bool, ok bool) {
+	if len(args) < 2 {
+		return "", nil, false, false
+	}
+
+	filtered := make([]string, 0, len(args)-1)
+	for _, a := range args[1:] {
+		if a == "--debug" {
+			debug = true
+			continue
+		}
+		filtered = append(filtered, a)
+	}
+
+	if len(filtered) == 0 {
+		return "", nil, debug, false
+	}
+
+	return filtered[0], filtered[1:], debug, true
+}
+
+func parsePreviewArgs(args []string) (expr string, count int, err error) {
+	if len(args) < 1 {
+		return "", 0, fmt.Errorf("usage: crontui preview <expression> [count]")
+	}
+
+	count = 10
+	expr = args[0]
+
+	if len(args) == 1 {
+		return expr, count, nil
+	}
+
+	if n, parseErr := strconv.Atoi(args[len(args)-1]); parseErr == nil {
+		if n <= 0 {
+			return "", 0, fmt.Errorf("count must be greater than 0")
+		}
+		return strings.Join(args[:len(args)-1], " "), n, nil
+	}
+
+	return strings.Join(args, " "), count, nil
+}
+
 // Run processes CLI subcommands. Returns true if a subcommand was handled.
 func Run(args []string) bool {
-	if len(args) < 2 {
+	cmd, subArgs, debug, ok := parseInvocation(args)
+	if !ok {
 		return false
 	}
 
-	// Check for global flags first
-	for _, a := range args[1:] {
-		if a == "--debug" {
-			Debug = true
-			log.SetOutput(os.Stderr)
-			log.SetPrefix("[debug] ")
-			log.Println("debug mode enabled")
-		}
+	Debug = debug
+	if Debug {
+		log.SetOutput(os.Stderr)
+		log.SetPrefix("[debug] ")
+		log.Println("debug mode enabled")
 	}
-
-	cmd := args[1]
-	if cmd == "--debug" && len(args) > 2 {
-		cmd = args[2]
-	}
-	subArgs := args[2:]
-	// Strip --debug from subArgs
-	filtered := subArgs[:0]
-	for _, a := range subArgs {
-		if a != "--debug" {
-			filtered = append(filtered, a)
-		}
-	}
-	subArgs = filtered
 
 	cfg := config.DefaultConfig()
 
@@ -299,22 +326,14 @@ func runValidate(args []string) bool {
 }
 
 func runPreview(args []string) bool {
-	if len(args) < 1 {
-		fmt.Fprintf(os.Stderr, "Usage: crontui preview <expression> [count]\n")
-		os.Exit(1)
-	}
-
-	count := 10
-	expr := args[0]
-
-	if len(args) > 1 {
-		n, err := strconv.Atoi(args[len(args)-1])
-		if err == nil {
-			count = n
-			expr = strings.Join(args[:len(args)-1], " ")
+	expr, count, err := parsePreviewArgs(args)
+	if err != nil {
+		if len(args) < 1 {
+			fmt.Fprintf(os.Stderr, "Usage: crontui preview <expression> [count]\n")
 		} else {
-			expr = strings.Join(args, " ")
+			fmt.Fprintf(os.Stderr, "Invalid preview arguments: %v\n", err)
 		}
+		os.Exit(1)
 	}
 
 	runs, err := cron.NextRuns(expr, count)
@@ -508,4 +527,3 @@ Commands:
 Flags:
   --debug              Enable debug logging to stderr`)
 }
-
