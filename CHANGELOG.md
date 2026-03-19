@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.2.0] - 2026-03-19
+
 ### Added
 - Native Windows Task Scheduler support for CronTUI-managed jobs under a dedicated task path such as `\CronTUI\`.
 - Windows backup, restore, remove-all, and direct `run` / `runnow` support through the scheduler backend.
