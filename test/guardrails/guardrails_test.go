@@ -25,6 +25,9 @@ func TestCIWorkflowTargetsMasterBranch(t *testing.T) {
 	}
 
 	required := []string{
+		"actions/checkout@v6",
+		"actions/setup-go@v6",
+		"golangci/golangci-lint-action@v9",
 		"ubuntu-latest",
 		"windows-latest",
 		"runner.os == 'Windows'",
@@ -73,6 +76,7 @@ func TestManualReleaseWorkflowSupportsSemverBumps(t *testing.T) {
 		"- minor",
 		"- major",
 		"contents: write",
+		"actions/checkout@v6",
 		"ref: refs/heads/master",
 		"git tag -a",
 		"git push origin",
@@ -94,6 +98,29 @@ func TestWindowsSmokeScriptExitsExplicitlyOnSuccess(t *testing.T) {
 	script := string(data)
 	if !strings.Contains(script, "exit 0") {
 		t.Fatalf("windows smoke script should exit 0 explicitly after successful validation")
+	}
+}
+
+func TestReleaseWorkflowUploadsDemoAssets(t *testing.T) {
+	content, err := os.ReadFile(repoPath(t, ".github", "workflows", "release.yml"))
+	if err != nil {
+		t.Fatalf("read release workflow: %v", err)
+	}
+
+	workflow := string(content)
+	required := []string{
+		"actions/checkout@v6",
+		"actions/setup-go@v6",
+		"goreleaser/goreleaser-action@v7",
+		"gh release upload",
+		"media/demo/*.gif",
+		"--clobber",
+	}
+
+	for _, needle := range required {
+		if !strings.Contains(workflow, needle) {
+			t.Fatalf("release workflow missing %q", needle)
+		}
 	}
 }
 

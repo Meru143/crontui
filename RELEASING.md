@@ -33,6 +33,7 @@ That workflow checks out `master`, computes the next semver tag, creates an anno
 
 - The pushed `v*` tag triggers the `Release` workflow.
 - GoReleaser builds the release artifacts and publishes the GitHub release.
+- The release workflow uploads every committed demo GIF from `media/demo/` to that GitHub release.
 - `go install github.com/meru143/crontui@latest` starts resolving to the new tag.
 - CI now covers both `ubuntu-latest` and `windows-latest`, including the native Windows Task Scheduler smoke script.
 
