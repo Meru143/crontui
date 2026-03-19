@@ -6,13 +6,12 @@ import (
 
 	tea "github.com/charmbracelet/bubbletea"
 
-	"github.com/meru143/crontui/internal/crontab"
 	"github.com/meru143/crontui/internal/styles"
 )
 
 // loadBackups fetches backups from the backup directory.
 func (m *Model) loadBackups() {
-	backups, err := crontab.ListBackups(m.cfg)
+	backups, err := modelListBackupsFn(m.cfg)
 	if err != nil {
 		m.statusMessage = "Error loading backups: " + err.Error()
 		m.statusIsError = true
@@ -48,13 +47,16 @@ func (m Model) updateBackup(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	case "enter", "r":
 		if len(m.backups) > 0 && m.selectedIndex < len(m.backups) {
 			backup := m.backups[m.selectedIndex]
-			if err := crontab.RestoreBackup(m.cfg, backup.Filename); err != nil {
+			if err := modelRestoreBackupFn(m.cfg, backup.Filename); err != nil {
 				m.statusMessage = "Restore failed: " + err.Error()
 				m.statusIsError = true
 			} else {
-				m.statusMessage = fmt.Sprintf("Restored from %s", backup.Filename)
-				m.statusIsError = false
+				successMessage := fmt.Sprintf("Restored from %s", backup.Filename)
 				m.loadJobs()
+				if !m.statusIsError {
+					m.statusMessage = successMessage
+					m.statusIsError = false
+				}
 			}
 			m.currentView = ViewList
 			m.selectedIndex = 0
@@ -62,7 +64,7 @@ func (m Model) updateBackup(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 
 	case "c":
 		// Create new backup
-		path, err := crontab.CreateBackup(m.cfg)
+		path, err := modelCreateBackupFn(m.cfg)
 		if err != nil {
 			m.statusMessage = "Backup failed: " + err.Error()
 			m.statusIsError = true

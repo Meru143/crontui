@@ -12,8 +12,11 @@ import (
 )
 
 var (
-	modelReadCrontabFn = crontab.ReadCrontab
-	modelGOOS          = runtime.GOOS
+	modelReadCrontabFn   = crontab.ReadCrontab
+	modelListBackupsFn   = crontab.ListBackups
+	modelCreateBackupFn  = crontab.CreateBackup
+	modelRestoreBackupFn = crontab.RestoreBackup
+	modelGOOS            = runtime.GOOS
 )
 
 // ViewType represents the current screen in the TUI.

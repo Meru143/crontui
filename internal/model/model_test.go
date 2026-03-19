@@ -5,6 +5,8 @@ import (
 	"strings"
 	"testing"
 
+	tea "github.com/charmbracelet/bubbletea"
+
 	"github.com/meru143/crontui/internal/config"
 	"github.com/meru143/crontui/pkg/types"
 )
@@ -214,5 +216,44 @@ func TestUpdateFormPreview_RebootDescriptorShowsFriendlyMessage(t *testing.T) {
 	}
 	if !strings.Contains(strings.ToLower(m.formPreview), "reboot") {
 		t.Fatalf("formPreview = %q, want reboot guidance", m.formPreview)
+	}
+}
+
+func TestUpdateBackup_RestoreKeepsSuccessStatus(t *testing.T) {
+	oldReadCrontab := modelReadCrontabFn
+	oldRestoreBackup := modelRestoreBackupFn
+	defer func() {
+		modelReadCrontabFn = oldReadCrontab
+		modelRestoreBackupFn = oldRestoreBackup
+	}()
+
+	modelReadCrontabFn = func() (string, error) {
+		return "0 * * * * /bin/echo restored\n", nil
+	}
+	modelRestoreBackupFn = func(cfg config.Config, filename string) error {
+		return nil
+	}
+
+	m := New(config.DefaultConfig())
+	m.currentView = ViewBackupList
+	m.backups = []types.Backup{{Filename: "restore.bak"}}
+
+	next, _ := m.updateBackup(tea.KeyMsg{Type: tea.KeyEnter})
+	updated, ok := next.(Model)
+	if !ok {
+		t.Fatalf("updateBackup returned %T, want model.Model", next)
+	}
+
+	if updated.currentView != ViewList {
+		t.Fatalf("currentView = %v, want %v", updated.currentView, ViewList)
+	}
+	if updated.statusIsError {
+		t.Fatal("statusIsError = true, want false")
+	}
+	if updated.statusMessage != "Restored from restore.bak" {
+		t.Fatalf("statusMessage = %q, want %q", updated.statusMessage, "Restored from restore.bak")
+	}
+	if len(updated.jobs) != 1 {
+		t.Fatalf("jobs length = %d, want 1", len(updated.jobs))
 	}
 }
