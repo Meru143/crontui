@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.1.1] - 2026-03-19
+
+### Fixed
+- Make `crontui version` fall back to Go build metadata so `go install github.com/meru143/crontui@latest` reports the tagged module version instead of always printing `dev`.
+
 ## [1.1.0] - 2026-03-19
 
 ### Added
