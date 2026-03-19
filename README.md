@@ -68,6 +68,42 @@ go install github.com/meru143/crontui@latest
 
 `@latest` installs the newest semver tag, not necessarily the newest commit on `master`.
 
+### Native Windows install with Go
+
+Use this path when you want CronTUI to manage native Windows Task Scheduler jobs instead of WSL cron jobs.
+
+Requirements:
+
+- Windows with the built-in `ScheduledTasks` PowerShell cmdlets available
+- Go installed locally
+- a normal interactive user account; admin is not required for standard time-based tasks
+
+Install and run without relying on `PATH`:
+
+```powershell
+go install github.com/meru143/crontui@latest
+$gobin = go env GOBIN
+if (-not $gobin) { $gobin = Join-Path (go env GOPATH) "bin" }
+& (Join-Path $gobin "crontui.exe") version
+& (Join-Path $gobin "crontui.exe")
+```
+
+If you prefer calling `crontui` directly, add that same `bin` directory to your user `PATH`.
+
+### Native Windows install from a release binary
+
+1. Download the latest Windows `.zip` asset from [GitHub Releases](https://github.com/meru143/crontui/releases).
+2. Extract `crontui.exe` to a directory you control, such as `%USERPROFILE%\\bin\\crontui`.
+3. Run it directly or add that directory to `PATH`.
+
+Example:
+
+```powershell
+cd $HOME\bin\crontui
+.\crontui.exe version
+.\crontui.exe
+```
+
 ### Latest `master` commit
 
 ```bash
@@ -89,6 +125,23 @@ git clone https://github.com/meru143/crontui.git
 cd crontui
 make build
 ```
+
+### Native Windows quick check
+
+After installing on native Windows, verify that CronTUI can create and see managed Task Scheduler jobs:
+
+```powershell
+crontui add "0 9 * * 1-5" "Write-Output hello-from-crontui" --desc "weekday hello"
+crontui list --json
+Get-ScheduledTask -TaskPath '\CronTUI\'
+```
+
+Expected result:
+
+- `crontui list --json` shows the managed job
+- `Get-ScheduledTask` shows a task such as `job-1` under `\CronTUI\`
+
+If you changed `windows_task_path`, replace `\CronTUI\` with your configured path.
 
 ## Usage
 
@@ -309,6 +362,20 @@ sudo apt update
 sudo apt install -y cron
 sudo service cron start
 ```
+
+### `crontui` command not found on Windows after `go install`
+
+`go install` writes the binary to `GOBIN`, or to `$(go env GOPATH)\bin` when `GOBIN` is unset.
+
+Check the location directly:
+
+```powershell
+$gobin = go env GOBIN
+if (-not $gobin) { $gobin = Join-Path (go env GOPATH) "bin" }
+Get-ChildItem $gobin\crontui.exe
+```
+
+Run the binary by full path or add that directory to your user `PATH`.
 
 ### `runnow` output differs from the scheduled run
 
