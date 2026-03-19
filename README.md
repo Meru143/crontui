@@ -7,9 +7,9 @@ A beautiful terminal UI for managing cron jobs, built with [Bubble Tea](https://
 
 ## Demo
 
-![CronTUI native Windows CLI demo](media/demo/crontui-native-windows.gif)
+![CronTUI Linux / WSL CLI demo](media/demo/crontui-linux-wsl.gif)
 
-Short native Windows CLI flow: add a managed task, confirm it in Task Scheduler, and create a backup.
+Short Linux / WSL CLI flow: add a cron job, confirm it in the managed list, and create a backup.
 
 ## Features
 
@@ -42,6 +42,12 @@ On native Windows, CronTUI manages only the tasks it owns inside a dedicated Tas
 - backups are JSON manifests of the logical CronTUI job set, not raw Task Scheduler XML dumps
 
 CronTUI does not attempt to import or edit arbitrary existing Task Scheduler jobs outside that folder.
+
+### Native Windows Demo
+
+![CronTUI native Windows CLI demo](media/demo/crontui-native-windows.gif)
+
+Short native Windows CLI flow: add a managed task, confirm it in Task Scheduler, and create a backup.
 
 ### Best Way To Use On Windows
 

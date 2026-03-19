@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
 """
-Generate a short README/release terminal demo GIF for CronTUI.
+Generate README/release terminal demo GIFs for CronTUI.
 
-This renderer creates a deterministic terminal-style animation from curated
-frames, which keeps the README asset stable even when live terminal capture
+This renderer creates deterministic terminal-style animations from curated
+frames, which keeps the README assets stable even when live terminal capture
 tooling is unavailable on the current machine.
 """
 
@@ -15,7 +15,7 @@ from PIL import Image, ImageDraw, ImageFont
 
 
 ROOT = Path(__file__).resolve().parent.parent
-OUTPUT = ROOT / "media" / "demo" / "crontui-native-windows.gif"
+OUTPUT_DIR = ROOT / "media" / "demo"
 FONT_PATHS = [
     Path(r"C:\WINDOWS\Fonts\consola.ttf"),
     Path(r"C:\WINDOWS\Fonts\consolab.ttf"),
@@ -37,51 +37,99 @@ ACCENT = "#58a6ff"
 TITLE = "#f0f6fc"
 
 
-FRAMES = [
-    {
-        "duration": 1200,
-        "command": None,
-        "body": [
-            ("title", "CronTUI native Windows demo"),
-            ("muted", "Add a managed task, verify it in Task Scheduler, create a backup."),
-            ("blank", ""),
-            ("text", "Environment: native Windows Task Scheduler"),
-            ("text", "Scope: one short CLI workflow for the README and release page"),
+DEMOS = {
+    "linux-wsl": {
+        "output": OUTPUT_DIR / "crontui-linux-wsl.gif",
+        "header": "CronTUI terminal demo",
+        "prompt": "merup@ubuntu:/mnt/c/Users/merup/Downloads/crontui$ ",
+        "frames": [
+            {
+                "duration": 1200,
+                "command": None,
+                "body": [
+                    ("title", "CronTUI Linux / WSL demo"),
+                    ("muted", "Add a cron job, confirm it in the managed list, create a backup."),
+                    ("blank", ""),
+                    ("text", "Environment: Ubuntu on WSL using the system crontab"),
+                    ("text", "Scope: one short CLI workflow for the README and release page"),
+                ],
+            },
+            {
+                "duration": 1800,
+                "command": 'crontui add "@hourly" "whoami" --desc "hourly identity"',
+                "body": [
+                    ("text", "Added job #1: @hourly whoami"),
+                ],
+            },
+            {
+                "duration": 2200,
+                "command": "crontui list",
+                "body": [
+                    ("text", "ID  Status  Schedule  Command  Description"),
+                    ("muted", "--  ------  --------  -------  -----------"),
+                    ("text", "1   ON      @hourly   whoami   hourly identity"),
+                ],
+            },
+            {
+                "duration": 2200,
+                "command": "crontui backup",
+                "body": [
+                    ("text", "Backup created: /tmp/crontui-readme-demo/crontab_20260319_135427.bak"),
+                ],
+            },
         ],
     },
-    {
-        "duration": 1800,
-        "command": r'.\crontui.exe add "@hourly" whoami --desc "hourly identity"',
-        "body": [
-            ("text", "Added job #1: @hourly whoami"),
+    "native-windows": {
+        "output": OUTPUT_DIR / "crontui-native-windows.gif",
+        "header": "CronTUI terminal demo",
+        "prompt": r"PS C:\Users\merup\Downloads\crontui> ",
+        "frames": [
+            {
+                "duration": 1200,
+                "command": None,
+                "body": [
+                    ("title", "CronTUI native Windows demo"),
+                    ("muted", "Add a managed task, verify it in Task Scheduler, create a backup."),
+                    ("blank", ""),
+                    ("text", "Environment: native Windows Task Scheduler"),
+                    ("text", "Scope: one short CLI workflow for the README and release page"),
+                ],
+            },
+            {
+                "duration": 1800,
+                "command": r'.\crontui.exe add "@hourly" whoami --desc "hourly identity"',
+                "body": [
+                    ("text", "Added job #1: @hourly whoami"),
+                ],
+            },
+            {
+                "duration": 2200,
+                "command": r".\crontui.exe list",
+                "body": [
+                    ("text", "ID  Status  Schedule  Command  Description"),
+                    ("muted", "--  ------  --------  -------  -----------"),
+                    ("text", "1   ON      @hourly   whoami   hourly identity"),
+                ],
+            },
+            {
+                "duration": 2200,
+                "command": r'''powershell -NoProfile -Command "Get-ScheduledTask | Where-Object TaskName -eq 'job-1' | Select-Object TaskName,TaskPath,State"''',
+                "body": [
+                    ("text", "TaskName TaskPath       State"),
+                    ("muted", "-------- --------       -----"),
+                    ("text", r"job-1    \CronTUI-Demo\ Ready"),
+                ],
+            },
+            {
+                "duration": 2200,
+                "command": r".\crontui.exe backup",
+                "body": [
+                    ("text", r"Backup created: .tmp\readme-demo\taskscheduler_20260319_191321.bak"),
+                ],
+            },
         ],
     },
-    {
-        "duration": 2200,
-        "command": r".\crontui.exe list",
-        "body": [
-            ("text", "ID  Status  Schedule  Command  Description"),
-            ("muted", "--  ------  --------  -------  -----------"),
-            ("text", "1   ON      @hourly   whoami   hourly identity"),
-        ],
-    },
-    {
-        "duration": 2200,
-        "command": r'''powershell -NoProfile -Command "Get-ScheduledTask | Where-Object TaskName -eq 'job-1' | Select-Object TaskName,TaskPath,State"''',
-        "body": [
-            ("text", "TaskName TaskPath       State"),
-            ("muted", "-------- --------       -----"),
-            ("text", r"job-1    \CronTUI-Demo\ Ready"),
-        ],
-    },
-    {
-        "duration": 2200,
-        "command": r".\crontui.exe backup",
-        "body": [
-            ("text", r"Backup created: .tmp\readme-demo\taskscheduler_20260319_191321.bak"),
-        ],
-    },
-]
+}
 
 
 def load_font(size: int) -> ImageFont.FreeTypeFont | ImageFont.ImageFont:
@@ -95,7 +143,7 @@ FONT = load_font(22)
 FONT_BOLD = load_font(24)
 
 
-def terminal_frame(command: str | None, body: list[tuple[str, str]]) -> Image.Image:
+def terminal_frame(header: str, prompt: str, command: str | None, body: list[tuple[str, str]]) -> Image.Image:
     image = Image.new("RGB", (WIDTH, HEIGHT), BG)
     draw = ImageDraw.Draw(image)
 
@@ -134,7 +182,7 @@ def terminal_frame(command: str | None, body: list[tuple[str, str]]) -> Image.Im
 
     draw.text(
         (panel_left + 90, panel_top + 16),
-        "CronTUI terminal demo",
+        header,
         fill=MUTED,
         font=FONT,
     )
@@ -143,7 +191,6 @@ def terminal_frame(command: str | None, body: list[tuple[str, str]]) -> Image.Im
     y = header_bottom + PADDING_Y
 
     if command is not None:
-        prompt = r"PS C:\Users\merup\Downloads\crontui> "
         draw.text((x, y), prompt, fill=PROMPT, font=FONT)
         prompt_width = draw.textlength(prompt, font=FONT)
         draw.text((x + prompt_width, y), command, fill=TEXT, font=FONT)
@@ -168,12 +215,25 @@ def terminal_frame(command: str | None, body: list[tuple[str, str]]) -> Image.Im
     return image
 
 
-def main() -> None:
-    OUTPUT.parent.mkdir(parents=True, exist_ok=True)
-    frames = [terminal_frame(frame["command"], frame["body"]) for frame in FRAMES]
-    durations = [frame["duration"] for frame in FRAMES]
+def render_demo(name: str, demo: dict[str, object]) -> None:
+    output = demo["output"]
+    header = demo["header"]
+    prompt = demo["prompt"]
+    frames_data = demo["frames"]
+
+    assert isinstance(output, Path)
+    assert isinstance(header, str)
+    assert isinstance(prompt, str)
+    assert isinstance(frames_data, list)
+
+    output.parent.mkdir(parents=True, exist_ok=True)
+    frames = [
+        terminal_frame(header, prompt, frame["command"], frame["body"])
+        for frame in frames_data
+    ]
+    durations = [frame["duration"] for frame in frames_data]
     frames[0].save(
-        OUTPUT,
+        output,
         save_all=True,
         append_images=frames[1:],
         duration=durations,
@@ -181,7 +241,12 @@ def main() -> None:
         optimize=False,
         disposal=2,
     )
-    print(f"Generated {OUTPUT}")
+    print(f"Generated {name}: {output}")
+
+
+def main() -> None:
+    for name, demo in DEMOS.items():
+        render_demo(name, demo)
 
 
 if __name__ == "__main__":
