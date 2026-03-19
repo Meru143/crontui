@@ -202,3 +202,17 @@ func TestLoadJobs_UsesDemoJobsOnWindowsOnly(t *testing.T) {
 		t.Fatal("expected statusIsError to remain true for Windows fallback")
 	}
 }
+
+func TestUpdateFormPreview_RebootDescriptorShowsFriendlyMessage(t *testing.T) {
+	m := New(config.DefaultConfig())
+	m.scheduleInput.SetValue("@reboot")
+
+	m.updateFormPreview()
+
+	if m.formError != "" {
+		t.Fatalf("formError = %q, want empty", m.formError)
+	}
+	if !strings.Contains(strings.ToLower(m.formPreview), "reboot") {
+		t.Fatalf("formPreview = %q, want reboot guidance", m.formPreview)
+	}
+}

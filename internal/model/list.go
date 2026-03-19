@@ -218,9 +218,13 @@ func (m Model) viewList() string {
 
 			nextRun := ""
 			if job.Enabled {
-				runs, err := cron.NextRuns(job.Schedule, 1)
-				if err == nil && len(runs) > 0 {
-					nextRun = cron.HumanReadable(runs[0])
+				if label, ok := cron.NextRunLabel(job.Schedule); ok {
+					nextRun = label
+				} else {
+					runs, err := cron.NextRuns(job.Schedule, 1)
+					if err == nil && len(runs) > 0 {
+						nextRun = cron.HumanReadable(runs[0])
+					}
 				}
 			}
 

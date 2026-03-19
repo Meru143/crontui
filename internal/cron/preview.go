@@ -6,10 +6,31 @@ import (
 	"time"
 )
 
+// PreviewNotice returns a friendly explanation for schedules without a deterministic next run.
+func PreviewNotice(expr string) (string, bool) {
+	if isRebootDescriptor(expr) {
+		return "Runs on the next system reboot.", true
+	}
+	return "", false
+}
+
+// NextRunLabel returns a short label for schedules without a concrete timestamped next run.
+func NextRunLabel(expr string) (string, bool) {
+	if isRebootDescriptor(expr) {
+		return "on reboot", true
+	}
+	return "", false
+}
+
 // NextRuns returns the next n run times for a cron expression.
 func NextRuns(expr string, n int) ([]time.Time, error) {
 	if n <= 0 {
 		return nil, fmt.Errorf("count must be greater than 0")
+	}
+
+	expr = normalizeExpr(expr)
+	if isRebootDescriptor(expr) {
+		return nil, nil
 	}
 
 	sched, err := parser.Parse(expr)

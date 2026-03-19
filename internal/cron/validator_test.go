@@ -106,12 +106,28 @@ func TestValidate_FieldRanges(t *testing.T) {
 }
 
 func TestValidate_Descriptors(t *testing.T) {
-	descriptors := []string{"@hourly", "@daily", "@weekly", "@monthly", "@yearly", "@annually"}
+	descriptors := []string{"@hourly", "@daily", "@weekly", "@monthly", "@yearly", "@annually", "@reboot"}
 	for _, d := range descriptors {
 		ok, err := Validate(d)
 		if !ok || err != nil {
 			t.Errorf("Validate(%q) should be valid, got err: %v", d, err)
 		}
+	}
+}
+
+func TestPreview_RebootDescriptor(t *testing.T) {
+	valid, runs, hr, errMsg := Preview("@reboot", 3)
+	if !valid {
+		t.Fatal("Preview(\"@reboot\") should be valid")
+	}
+	if errMsg != "" {
+		t.Fatalf("Preview(\"@reboot\") errMsg = %q, want empty", errMsg)
+	}
+	if len(runs) != 0 {
+		t.Fatalf("Preview(\"@reboot\") returned %d runs, want 0", len(runs))
+	}
+	if len(hr) != 0 {
+		t.Fatalf("Preview(\"@reboot\") returned %d human-readable items, want 0", len(hr))
 	}
 }
 

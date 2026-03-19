@@ -114,6 +114,12 @@ func (m *Model) updateFormPreview() {
 		return
 	}
 
+	if notice, ok := cron.PreviewNotice(schedule); ok {
+		m.formError = ""
+		m.formPreview = "  " + notice
+		return
+	}
+
 	m.formError = ""
 	var lines []string
 	for i, t := range runs {
