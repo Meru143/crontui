@@ -18,7 +18,11 @@ func main() {
 	}
 
 	// Launch interactive TUI
-	cfg := config.DefaultConfig()
+	cfg, err := config.Load()
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Error loading config: %v\n", err)
+		os.Exit(1)
+	}
 	m := model.New(cfg)
 
 	p := tea.NewProgram(m, tea.WithAltScreen())

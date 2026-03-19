@@ -84,7 +84,12 @@ func Run(args []string) bool {
 		log.Println("debug mode enabled")
 	}
 
-	cfg := config.DefaultConfig()
+	cfg, err := config.Load()
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Error loading config: %v\n", err)
+		exitCLI(1)
+		return true
+	}
 
 	switch cmd {
 	case "list", "ls":
