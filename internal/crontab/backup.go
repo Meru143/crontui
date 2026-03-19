@@ -104,7 +104,7 @@ func RestoreBackup(cfg config.Config, filename string) error {
 		return fmt.Errorf("failed to backup current crontab before restore: %w", err)
 	}
 
-	return writeRawCrontabFn(string(content))
+	return writeRawCrontabFn(normalizeCrontab(string(content)))
 }
 
 // PruneBackups keeps only the most recent maxBackups files.

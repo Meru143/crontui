@@ -15,6 +15,13 @@ var (
 	writeRawCrontabFn = WriteRawCrontab
 )
 
+func normalizeCrontab(raw string) string {
+	if strings.HasSuffix(raw, "\n") {
+		return raw
+	}
+	return raw + "\n"
+}
+
 // LoadDocument reads and parses the current crontab into a document.
 func LoadDocument() (*Document, error) {
 	raw, err := ReadCrontab()
@@ -38,7 +45,7 @@ func WriteRawCrontab(raw string) error {
 	}
 
 	cmd := execCommand("crontab", "-")
-	cmd.Stdin = strings.NewReader(raw)
+	cmd.Stdin = strings.NewReader(normalizeCrontab(raw))
 	out, err := cmd.CombinedOutput()
 	if err != nil {
 		return fmt.Errorf("failed to write crontab: %w (%s)", err, string(out))
@@ -51,7 +58,7 @@ func WriteDocument(doc *Document) error {
 	if doc == nil {
 		return fmt.Errorf("document is required")
 	}
-	return writeRawCrontabFn(doc.Render())
+	return writeRawCrontabFn(normalizeCrontab(doc.Render()))
 }
 
 // WriteDocumentWithBackup creates a backup, writes the document, then prunes old backups.
@@ -62,7 +69,7 @@ func WriteDocumentWithBackup(cfg config.Config, doc *Document) error {
 	if _, err := createBackupFn(cfg); err != nil {
 		return err
 	}
-	if err := writeRawCrontabFn(doc.Render()); err != nil {
+	if err := writeRawCrontabFn(normalizeCrontab(doc.Render())); err != nil {
 		return err
 	}
 	if err := PruneBackups(cfg); err != nil {

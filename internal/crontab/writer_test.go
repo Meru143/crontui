@@ -158,3 +158,35 @@ func TestWriteDocument_PreservesEnvAssignments(t *testing.T) {
 		}
 	}
 }
+
+func TestWriteDocument_AppendsTrailingNewline(t *testing.T) {
+	doc, err := ParseDocument("")
+	if err != nil {
+		t.Fatalf("ParseDocument: %v", err)
+	}
+
+	if err := doc.ReplaceJobs([]types.CronJob{
+		{ID: 1, Schedule: "*/5 * * * *", Command: "/usr/bin/task", Enabled: true},
+	}); err != nil {
+		t.Fatalf("ReplaceJobs: %v", err)
+	}
+
+	oldWriteRaw := writeRawCrontabFn
+	defer func() {
+		writeRawCrontabFn = oldWriteRaw
+	}()
+
+	var wrote string
+	writeRawCrontabFn = func(content string) error {
+		wrote = content
+		return nil
+	}
+
+	if err := WriteDocument(doc); err != nil {
+		t.Fatalf("WriteDocument: %v", err)
+	}
+
+	if !strings.HasSuffix(wrote, "\n") {
+		t.Fatalf("WriteDocument output must end with newline, got %q", wrote)
+	}
+}

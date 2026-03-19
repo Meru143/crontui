@@ -168,6 +168,41 @@ func TestRestoreBackup_WritesRawContent(t *testing.T) {
 	}
 }
 
+func TestRestoreBackup_AppendsTrailingNewline(t *testing.T) {
+	tmp := t.TempDir()
+	cfg := config.Config{BackupDir: tmp, MaxBackups: 10}
+
+	raw := "SHELL=/bin/bash"
+	if err := os.WriteFile(filepath.Join(tmp, "restore.bak"), []byte(raw), 0o644); err != nil {
+		t.Fatalf("write backup: %v", err)
+	}
+
+	oldCreateBackup := createBackupFn
+	oldWriteRaw := writeRawCrontabFn
+	defer func() {
+		createBackupFn = oldCreateBackup
+		writeRawCrontabFn = oldWriteRaw
+	}()
+
+	createBackupFn = func(config.Config) (string, error) {
+		return filepath.Join(tmp, "pre-restore.bak"), nil
+	}
+
+	var wrote string
+	writeRawCrontabFn = func(content string) error {
+		wrote = content
+		return nil
+	}
+
+	if err := RestoreBackup(cfg, "restore.bak"); err != nil {
+		t.Fatalf("RestoreBackup: %v", err)
+	}
+
+	if wrote != raw+"\n" {
+		t.Fatalf("RestoreBackup must append trailing newline\n--- got ---\n%q\n--- want ---\n%q", wrote, raw+"\n")
+	}
+}
+
 func TestCreateBackup_PrunesWhenOverLimit(t *testing.T) {
 	tmp := t.TempDir()
 	cfg := config.Config{BackupDir: tmp, MaxBackups: 2}
