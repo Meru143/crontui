@@ -26,6 +26,7 @@ Thumbs.db
 
 # Build
 dist/
+.tmp/
 
 # Config (user-specific)
 *.local.yaml
