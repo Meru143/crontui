@@ -132,21 +132,26 @@ h2 {
   background: rgba(255, 255, 255, 0.54);
 }
 
-.hero-grid,
+.hero-proof,
 .cards,
 .install-grid {
   display: grid;
   gap: 18px;
 }
 
-.hero-grid {
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+.hero-proof {
+  grid-template-columns: 1fr;
 }
 
 .panel {
   overflow: hidden;
   padding: 10px;
   background: var(--paper-strong);
+}
+
+.hero-panel img {
+  aspect-ratio: 16 / 10;
+  object-fit: cover;
 }
 
 .panel figcaption {
@@ -179,6 +184,11 @@ h2 {
   gap: 16px;
 }
 
+.hero-feature-board .feature {
+  min-height: 168px;
+  background: rgba(255, 252, 246, 0.98);
+}
+
 .feature span {
   display: inline-block;
   margin-bottom: 12px;
@@ -204,14 +214,9 @@ h2 {
 
 @media (max-width: 980px) {
   .hero,
-  .split,
   .cards,
   .feature-board,
   .install-grid {
-    grid-template-columns: 1fr;
-  }
-
-  .hero-grid {
     grid-template-columns: 1fr;
   }
 
