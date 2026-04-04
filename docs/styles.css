@@ -141,6 +141,9 @@ h2 {
 
 .hero-proof {
   grid-template-columns: 1fr;
+  align-content: start;
+  align-self: start;
+  height: fit-content;
   align-items: start;
   gap: 0;
 }
@@ -148,6 +151,7 @@ h2 {
 .hero-panel {
   align-self: start;
   height: fit-content;
+  margin: 0;
 }
 
 .panel {
