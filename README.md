@@ -1,6 +1,10 @@
 # CronTUI
 
-A beautiful terminal UI for managing cron jobs, built with [Bubble Tea](https://github.com/charmbracelet/bubbletea) and [Lip Gloss](https://github.com/charmbracelet/lipgloss).
+A terminal scheduler that makes cron and native Windows task management feel like a real interface instead of a string-editing puzzle.
+
+Live page: [merup.me/crontui](https://merup.me/crontui/)
+
+CronTUI combines a polished Bubble Tea interface with CLI parity, live validation, next-run previews, backups, and an honest split between Unix cron semantics and native Windows Task Scheduler behavior.
 
 ![Go](https://img.shields.io/badge/Go-1.25+-00ADD8?logo=go&logoColor=white)
 ![License](https://img.shields.io/badge/License-MIT-green)

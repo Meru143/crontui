@@ -1,0 +1,153 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>CronTUI | A cron manager that finally feels pleasant to use</title>
+    <meta
+      name="description"
+      content="CronTUI is a terminal UI for cron and native Windows scheduled tasks, with real-time validation, previews, backups, and CLI parity."
+    />
+    <meta
+      property="og:title"
+      content="CronTUI | A cron manager that finally feels pleasant to use"
+    />
+    <meta
+      property="og:description"
+      content="Manage cron visually, preview the next run before saving, and keep the same tool for Linux, macOS, WSL, and native Windows."
+    />
+    <meta property="og:type" content="website" />
+    <meta property="og:url" content="https://merup.me/crontui/" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:wght@400;500;600;700;800&family=IBM+Plex+Mono:wght@400;500&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body>
+    <div class="page">
+      <header class="topbar">
+        <a class="brand" href="https://github.com/Meru143/crontui">CronTUI</a>
+        <nav>
+          <a href="#modes">Modes</a>
+          <a href="#why">Why</a>
+          <a href="#install">Install</a>
+          <a href="https://github.com/Meru143/crontui">GitHub</a>
+        </nav>
+      </header>
+
+      <main>
+        <section class="hero">
+          <div class="hero-copy">
+            <p class="eyebrow">Terminal scheduling with an opinionated UI</p>
+            <h1>Editing cron should feel like editing a real interface, not decoding punctuation under pressure.</h1>
+            <p class="lede">
+              CronTUI wraps cron and native Windows scheduling in a visual terminal workflow:
+              add jobs, validate expressions live, preview the next run, keep backups, and
+              still drop to a plain CLI when you want scripting instead of menus.
+            </p>
+            <div class="actions">
+              <a class="button primary" href="https://github.com/Meru143/crontui">Star on GitHub</a>
+              <a class="button secondary" href="#install">Install CronTUI</a>
+            </div>
+          </div>
+
+          <div class="hero-grid">
+            <figure class="panel">
+              <img src="./assets/crontui-linux-wsl.gif" alt="CronTUI Linux and WSL demo" />
+              <figcaption>Linux / WSL cron flow</figcaption>
+            </figure>
+            <figure class="panel">
+              <img src="./assets/crontui-native-windows.gif" alt="CronTUI native Windows demo" />
+              <figcaption>Native Windows task flow</figcaption>
+            </figure>
+          </div>
+        </section>
+
+        <section id="modes" class="section">
+          <div class="section-head">
+            <p class="eyebrow">Modes</p>
+            <h2>One interface, two scheduling worlds.</h2>
+            <p>
+              CronTUI does not pretend Windows and Unix cron are the same system. It gives both
+              environments a clean terminal workflow while staying honest about the semantics and limits.
+            </p>
+          </div>
+
+          <div class="cards">
+            <article class="card">
+              <h3>Linux, macOS, WSL</h3>
+              <p>Manage real `crontab` entries with schedule presets, next-run previews, and backup support.</p>
+            </article>
+            <article class="card">
+              <h3>Native Windows</h3>
+              <p>Manage only CronTUI-owned tasks inside a dedicated Task Scheduler folder instead of mutating arbitrary jobs.</p>
+            </article>
+            <article class="card">
+              <h3>CLI parity</h3>
+              <p>Every major operation is also available as a non-interactive command when you need automation instead of UI.</p>
+            </article>
+          </div>
+        </section>
+
+        <section id="why" class="section split">
+          <div class="section-head">
+            <p class="eyebrow">Why CronTUI</p>
+            <h2>Less memorizing. More confidence before you save.</h2>
+            <p>
+              The best parts of the tool are the small ones: live cron validation, next-run previews,
+              stable managed IDs, and backups before writes. That turns a fragile text edit into a workflow
+              you can trust when the schedule actually matters.
+            </p>
+          </div>
+
+          <div class="feature-board">
+            <div class="feature">
+              <span>Live</span>
+              <p>Realtime cron validation while you type.</p>
+            </div>
+            <div class="feature">
+              <span>Preview</span>
+              <p>See upcoming run times before the entry is written.</p>
+            </div>
+            <div class="feature">
+              <span>Backup</span>
+              <p>Automatic snapshots before each write or restore.</p>
+            </div>
+            <div class="feature">
+              <span>Filter</span>
+              <p>Search and filter by command or enabled state.</p>
+            </div>
+          </div>
+        </section>
+
+        <section id="install" class="section install">
+          <div class="section-head">
+            <p class="eyebrow">Install</p>
+            <h2>Use it in the mode your machine actually needs.</h2>
+            <p>
+              Go install is the short path. Releases are there when you want a binary. Native Windows
+              and WSL both have explicit, documented paths.
+            </p>
+          </div>
+
+          <div class="install-grid">
+            <pre><code>go install github.com/meru143/crontui@latest
+
+crontui
+crontui add "0 9 * * 1-5" "backup.sh"
+crontui list --json</code></pre>
+            <pre><code>Best fits:
+
+- developer workstation schedules
+- recurring local scripts
+- WSL cron management
+- native Windows task management</code></pre>
+          </div>
+        </section>
+      </main>
+    </div>
+  </body>
+</html>

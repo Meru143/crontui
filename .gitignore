@@ -43,3 +43,11 @@ skills-lock.json
 2026-02-26-crontui-todo.md
 docs/
 .worktrees/
+!docs/
+docs/*
+!docs/.nojekyll
+!docs/index.html
+!docs/styles.css
+!docs/assets/
+!docs/assets/*.gif
+docs/superpowers/
