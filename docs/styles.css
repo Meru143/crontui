@@ -142,7 +142,7 @@ h2 {
 .hero-proof {
   grid-template-columns: 1fr;
   align-items: start;
-  gap: 12px;
+  gap: 0;
 }
 
 .hero-panel {
@@ -152,7 +152,7 @@ h2 {
 
 .panel {
   overflow: hidden;
-  padding: 10px;
+  padding: 8px 8px 4px;
   background: var(--paper-strong);
 }
 
@@ -163,7 +163,7 @@ h2 {
 }
 
 .panel figcaption {
-  padding: 10px 4px 0;
+  padding: 8px 2px 0;
   color: var(--muted);
   font-size: 0.95rem;
 }
