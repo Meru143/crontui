@@ -152,6 +152,7 @@ h2 {
 .hero-panel img {
   aspect-ratio: 16 / 10;
   object-fit: cover;
+  border-radius: 18px;
 }
 
 .panel figcaption {
