@@ -141,6 +141,13 @@ h2 {
 
 .hero-proof {
   grid-template-columns: 1fr;
+  align-items: start;
+  gap: 12px;
+}
+
+.hero-panel {
+  align-self: start;
+  height: fit-content;
 }
 
 .panel {
@@ -156,7 +163,7 @@ h2 {
 }
 
 .panel figcaption {
-  padding: 12px 6px 4px;
+  padding: 10px 4px 0;
   color: var(--muted);
   font-size: 0.95rem;
 }
@@ -170,7 +177,7 @@ h2 {
 }
 
 .card,
-.feature { padding: 24px; }
+.feature { padding: 20px; }
 
 .split {
   display: grid;
@@ -186,7 +193,7 @@ h2 {
 }
 
 .hero-feature-board .feature {
-  min-height: 168px;
+  min-height: 132px;
   background: rgba(255, 252, 246, 0.98);
 }
 
