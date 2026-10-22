@@ -24,7 +24,7 @@ body {
 
 a { color: inherit; text-decoration: none; }
 img { display: block; width: 100%; }
-pre, code { font-family: "IBM Plex Mono", ui-monospace, monospace; }
+pre, code { max-width: 100%; overflow-x: auto; font-family: "IBM Plex Mono", ui-monospace, monospace; }
 
 .page {
   width: min(1160px, calc(100% - 40px));
@@ -224,12 +224,28 @@ h2 {
   background: linear-gradient(180deg, rgba(255, 251, 244, 0.9), rgba(249, 242, 228, 0.98));
 }
 
+.site-footer {
+  margin-top: 30px;
+  padding-top: 22px;
+  border-top: 1px solid var(--line);
+  color: var(--muted);
+  font-size: 0.92rem;
+  line-height: 1.7;
+}
+
+.site-footer a {
+  color: var(--ink);
+  text-decoration: underline;
+  text-decoration-color: #4f6d11;
+  text-underline-offset: 0.2em;
+}
+
 @media (max-width: 980px) {
   .hero,
   .cards,
   .feature-board,
   .install-grid {
-    grid-template-columns: 1fr;
+    grid-template-columns: minmax(0, 1fr);
   }
 
   .topbar {
@@ -248,4 +264,7 @@ h2 {
     border-radius: 22px;
   }
   .hero-copy { padding: 28px; }
+
+  /* Scale the headline on narrow phones so "punctuation" stays inside the card. */
+  h1 { font-size: min(3rem, 13vw); }
 }
