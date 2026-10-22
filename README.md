@@ -334,7 +334,7 @@ For maintainers, `@latest` moves only when a new semver tag is created.
 4. The workflow creates and pushes the next `v*` tag from `master`.
 5. The tag triggers the `Release` workflow, which builds and publishes GitHub release artifacts and uploads the committed demo GIFs from `media/demo/`.
 
-The manual tag workflow is defined in [.github/workflows/manual-release.yml](C:/Users/merup/Downloads/crontui/.github/workflows/manual-release.yml). The tag-driven release workflow is [.github/workflows/release.yml](C:/Users/merup/Downloads/crontui/.github/workflows/release.yml). For a short maintainer checklist, see [RELEASING.md](C:/Users/merup/Downloads/crontui/RELEASING.md).
+The manual tag workflow is defined in [.github/workflows/manual-release.yml](.github/workflows/manual-release.yml). The tag-driven release workflow is [.github/workflows/release.yml](.github/workflows/release.yml). For a short maintainer checklist, see [RELEASING.md](RELEASING.md).
 
 ## Troubleshooting
 
